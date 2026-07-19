@@ -1,57 +1,58 @@
 function Categories() {
-
   const categories = [
     {
-      name: "Toys",
-      image: "🧸"
+      title: "Men",
+      description: "Latest fashion collection"
     },
     {
-      name: "Mens",
-      image: "👔"
+      title: "Women",
+      description: "Trending styles & accessories"
     },
     {
-      name: "Womens",
-      image: "👗"
+      title: "Kids",
+      description: "Cute & comfortable collection"
     },
     {
-      name: "Others",
-      image: "🛍️"
+      title: "Toys",
+      description: "Fun toys for every age"
     }
-  ]
-
+  ];
 
   return (
     <section className="categories">
 
       <h2>Shop By Category</h2>
 
-      <div className="category-container">
+      <p className="category-subtitle">
+        Discover our premium collections
+      </p>
 
-        {categories.map((category, index) => (
-          <div 
-            className="category-card" 
-            key={index}
-          >
+      <div className="category-grid">
 
-            <div className="category-image">
-              {category.image}
+        {categories.map((item, index) => (
+
+          <div className="category-card" key={index}>
+
+            <div className="category-placeholder">
+              Image
             </div>
 
-            <h3>
-              {category.name}
-            </h3>
+            <h3>{item.title}</h3>
+
+            <p>{item.description}</p>
 
             <button>
-              Explore
+              Shop Now
             </button>
 
           </div>
+
         ))}
 
       </div>
 
     </section>
-  )
+  );
 }
 
-export default Categories
+export default Categories;
