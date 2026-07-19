@@ -13,3 +13,31 @@ p {
   text-align: center;
   font-size: 20px;
 }
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 80px;
+  background: #fff4e6;
+}
+
+.hero-text h1 {
+  font-size: 48px;
+}
+
+.hero-text p {
+  font-size: 20px;
+}
+
+.hero-text button {
+  padding: 14px 30px;
+  border: none;
+  background: black;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.hero-image {
+  font-size: 120px;
+}
