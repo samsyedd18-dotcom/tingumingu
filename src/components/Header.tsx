@@ -3,7 +3,8 @@ import { useCart } from "../context/cartcontext"
 
 function Header() {
 
-  const { cart } = useCart()
+  const { cart } = useCart() 
+  console.log("Header:", cart);
 
 console.log("Cart Count:", cart.length);
 

@@ -61,12 +61,14 @@ function Products() {
               {product.price}
             </p>
 
-            <button 
-              onClick={() => addToCart(product)}
-            >
-              Add To Cart
-            </button>
-
+           <button
+  onClick={() => {
+    console.log("Clicked");
+    addToCart(product);
+  }}
+>
+  Add To Cart
+</button>
           </div>
 
         ))}
