@@ -1,9 +1,13 @@
+import Header from "./components/Header"
+
 function App() {
   return (
-    <div>
-      <h1>Tingu Mingu Toys</h1>
-      <p>Welcome to our toy store</p>
-    </div>
+    <>
+      <Header />
+
+      <h1>Welcome to Tingu Mingu Toys</h1>
+      <p>Best toys for happy kids</p>
+    </>
   )
 }
 
