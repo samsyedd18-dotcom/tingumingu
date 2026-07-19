@@ -1,12 +1,12 @@
 import Header from "./components/Header"
+import Hero from "./components/Hero"
+import "./App.css"
 
 function App() {
   return (
     <>
       <Header />
-
-      <h1>Welcome to Tingu Mingu Toys</h1>
-      <p>Best toys for happy kids</p>
+      <Hero />
     </>
   )
 }
