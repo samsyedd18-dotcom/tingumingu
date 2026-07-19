@@ -1,12 +1,21 @@
 * {
   box-sizing: border-box;
 }
+:root {
+  --primary: #ff6b6b;
+  --secondary: #ffd93d;
+  --dark: #222;
+  --light: #fff7e6;
+  --card: #ffffff;
+}
 
 body {
+ body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #fff;
-  color: #222;
+  background: var(--light);
+  color: var(--dark);
+}
 }
 
 /* Header */
@@ -266,5 +275,30 @@ nav a {
   .product-container {
     grid-template-columns: 1fr;
   }
+
+}
+.footer {
+
+  background: #222;
+  color: white;
+
+  padding: 50px 60px;
+
+  display: grid;
+
+  grid-template-columns: repeat(3,1fr);
+
+  gap: 30px;
+
+}
+
+
+@media(max-width:768px){
+
+.footer{
+
+grid-template-columns:1fr;
+
+}
 
 }
