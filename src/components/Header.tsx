@@ -1,48 +1,44 @@
-import { useCart } from "../context/cartcontext.tsx"
-
+import { useCart } from "../context/cartcontext";
 
 function Header() {
-
-  const { cart } = useCart() 
-  console.log("Header:", cart);
-
-console.log("Cart Count:", cart.length);
+  const { cart } = useCart();
 
   return (
     <header className="header">
 
       <div className="logo">
-        Tingu Mingu Toys
+        🧸 Tingu Mingu
       </div>
 
-
-      <nav>
+      <nav className="nav">
         <a href="#">Home</a>
-        <a href="#">Toys</a>
-        <a href="#">Mens</a>
-        <a href="#">Womens</a>
-        <a href="#">Others</a>
+        <a href="#">Shop</a>
+        <a href="#">Men</a>
+        <a href="#">Women</a>
+        <a href="#">Kids</a>
+        <a href="#">Contact</a>
       </nav>
 
-
-      <div className="actions">
+      <div className="right">
 
         <input
+          className="search"
           type="text"
           placeholder="Search products..."
         />
 
+        <button className="cartBtn">
+          🛒 {cart.length}
+        </button>
 
-        <button>
-          🛒 Cart ({cart.length})
+        <button className="loginBtn">
+          Login
         </button>
 
       </div>
 
-
     </header>
-  )
+  );
 }
 
-
-export default Header
+export default Header;
