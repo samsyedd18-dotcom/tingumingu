@@ -1,6 +1,7 @@
 import Header from "./components/Header"
 import Hero from "./components/Hero"
 import Categories from "./components/Categories"
+import Products from "./components/Products"
 import "./App.css"
 
 function App() {
@@ -9,6 +10,7 @@ function App() {
       <Header />
       <Hero />
       <Categories />
+      <Products/>
     </>
   )
 }

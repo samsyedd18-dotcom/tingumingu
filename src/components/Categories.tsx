@@ -6,15 +6,15 @@ function Categories() {
       image: "🧸"
     },
     {
-      name: "Cars",
+      name: "Mens",
       image: "🚗"
     },
     {
-      name: "Dolls",
+      name: "Womens",
       image: "👧"
     },
     {
-      name: "Educational Toys",
+      name: "Others",
       image: "🧩"
     }
   ]
