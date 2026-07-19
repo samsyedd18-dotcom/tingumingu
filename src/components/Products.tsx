@@ -1,7 +1,7 @@
 import men from "../assets/images/men.jpg"
 import women from "../assets/images/women.jpg"
 import kids from "../assets/images/kids.jpg"
-import toys from "../assets/images/toys.jpg"
+import toys from "../assets/images/toy.jpg"
 
 import { useCart } from "../context/cartcontext"
 
