@@ -109,3 +109,50 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+.total-price{
+    margin-top:20px;
+    margin-bottom:10px;
+}
+
+.quantity{
+    margin:15px 0;
+}
+/* PRODUCT DETAILS MOBILE VIEW */
+
+@media(max-width:900px){
+
+    .product-details{
+        flex-direction:column;
+        padding:20px;
+        gap:30px;
+    }
+
+    .details-image{
+        width:100%;
+        order:1;
+        text-align:center;
+    }
+
+    .details-image img{
+        width:100%;
+        max-width:400px;
+    }
+
+    .details-info{
+        width:100%;
+        order:2;
+    }
+
+    .details-info h1{
+        font-size:30px;
+    }
+
+    .quantity{
+        justify-content:center;
+    }
+
+    .buy-btn{
+        width:100%;
+    }
+
+}
