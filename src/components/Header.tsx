@@ -1,7 +1,15 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+
+import { auth } from "../firebase";
+import { useAuth } from "../context/AuthContext";
+
 import { useCart } from "../context/cartcontext";
 import { useWishlist } from "../context/wishlistcontext";
 import { useSearch } from "../context/SearchContext";
+
+import logo from "../assets/tingu-mingu-logo.png";
 
 interface HeaderProps {
   openCart: () => void;
@@ -11,24 +19,34 @@ function Header({ openCart }: HeaderProps) {
 
   const { cart } = useCart();
   const { wishlist } = useWishlist();
-
   const { search, setSearch } = useSearch();
+  const { user } = useAuth();
+
+  const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
 
   const goWishlist = () => {
-
     document.getElementById("wishlist")?.scrollIntoView({
       behavior: "smooth",
     });
-
   };
 
-  const goLogin = () => {
+  const handleLogout = async () => {
 
-    document.getElementById("login")?.scrollIntoView({
-      behavior: "smooth",
-    });
+    try {
+
+      await signOut(auth);
+
+      alert("Logged Out Successfully");
+
+      navigate("/");
+
+    } catch (error) {
+
+      alert("Logout Failed");
+
+    }
 
   };
 
@@ -38,10 +56,25 @@ function Header({ openCart }: HeaderProps) {
 
       <div className="topbar">
 
-        <div className="logo">
-          🧸 Tingu Mingu
-        </div>
+        {/* LOGO */}
+        <Link
+          to="/"
+          className="logo"
+          style={{
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <img
+            src={logo}
+            alt="Tingu Mingu Toys"
+            className="logo-image"
+          />
+        </Link>
 
+
+        {/* SEARCH */}
         <div className="search-box">
 
           <input
@@ -53,6 +86,8 @@ function Header({ openCart }: HeaderProps) {
 
         </div>
 
+
+        {/* HEADER ICONS */}
         <div className="header-icons">
 
           <button
@@ -62,12 +97,54 @@ function Header({ openCart }: HeaderProps) {
             ❤️ {wishlist.length}
           </button>
 
-          <button
-            className="login-btn"
-            onClick={goLogin}
-          >
-            Login
-          </button>
+
+          {user ? (
+
+            <>
+
+              <span
+                style={{
+                  color: "white",
+                  fontWeight: "600",
+                  marginRight: "10px",
+                }}
+              >
+                👋 {user.email}
+              </span>
+
+              <button
+                className="login-btn"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+
+            </>
+
+          ) : (
+
+            <>
+
+              <Link to="/login">
+
+                <button className="login-btn">
+                  Login
+                </button>
+
+              </Link>
+
+              <Link to="/register">
+
+                <button className="login-btn">
+                  Register
+                </button>
+
+              </Link>
+
+            </>
+
+          )}
+
 
           <button
             className="cart-btn"
@@ -75,6 +152,7 @@ function Header({ openCart }: HeaderProps) {
           >
             🛒 {cart.length}
           </button>
+
 
           <button
             className="menu-btn"
@@ -87,15 +165,23 @@ function Header({ openCart }: HeaderProps) {
 
       </div>
 
+
+      {/* NAVBAR */}
       <nav className={menuOpen ? "navbar active" : "navbar"}>
 
-        <a href="#">Home</a>
-        <a href="#">Shop</a>
-        <a href="#">Men</a>
-        <a href="#">Women</a>
-        <a href="#">Kids</a>
-        <a href="#">Toys</a>
-        <a href="#">Contact</a>
+        <Link to="/">Home</Link>
+
+        <a href="#products">Shop</a>
+
+        <a href="#categories">Men</a>
+
+        <a href="#categories">Women</a>
+
+        <a href="#categories">Kids</a>
+
+        <a href="#categories">Toys</a>
+
+        <a href="#footer">Contact</a>
 
       </nav>
 

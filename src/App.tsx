@@ -10,11 +10,14 @@ import Cart from "./components/Cart";
 import Wishlist from "./components/Wishlist";
 import CartDrawer from "./components/CartDrawer";
 
+import Login from "./components/Login";
+import Register from "./components/Register";
+
 import ProductDetails from "./pages/ProductDetails";
 import Admin from "./pages/Admin";
 import Checkout from "./pages/Checkout";
-import "./App.css";
 
+import "./App.css";
 
 function Home() {
 
@@ -47,7 +50,6 @@ function Home() {
 
 }
 
-
 function App() {
 
   return (
@@ -60,24 +62,34 @@ function App() {
       />
 
       <Route
+        path="/login"
+        element={<Login />}
+      />
+
+      <Route
+        path="/register"
+        element={<Register />}
+      />
+
+      <Route
         path="/product/:id"
         element={<ProductDetails />}
+      />
+
+      <Route
+        path="/checkout"
+        element={<Checkout />}
       />
 
       <Route
         path="/admin"
         element={<Admin />}
       />
-      <Route
-  path="/checkout"
-  element={<Checkout />}
-/>
 
     </Routes>
 
   );
 
 }
-
 
 export default App;

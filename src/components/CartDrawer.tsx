@@ -1,76 +1,63 @@
 import { useCart } from "../context/cartcontext";
+import { useNavigate } from "react-router-dom";
 
 interface Props {
   open: boolean;
   close: () => void;
 }
 
+function CartDrawer({ open, close }: Props) {
 
-function CartDrawer({open, close}: Props) {
-
+  const navigate = useNavigate();
   const { cart } = useCart();
 
-
-  const total = cart.reduce((sum, item)=>{
-    return sum + Number(item.price.replace("$",""));
-  },0);
-
+  const total = cart.reduce((sum: number, item: any) => {
+    return sum + Number(item.price);
+  }, 0);
 
   return (
 
     <div className={open ? "cart-overlay active" : "cart-overlay"}>
 
-
       <div className="cart-drawer">
 
-
-        <button 
+        <button
           className="close-cart"
           onClick={close}
         >
           ✕
         </button>
 
-
-        <h2>
-          🛒 Your Cart
-        </h2>
-
+        <h2>🛒 Your Cart</h2>
 
         {
           cart.length === 0 ? (
 
-            <p>
-              Cart is empty
-            </p>
+            <p>Cart is empty</p>
 
           ) : (
 
-            cart.map((product,index)=>(
+            cart.map((product: any, index: number) => (
 
-              <div 
+              <div
                 className="drawer-item"
                 key={index}
               >
 
-                <img 
+                <img
                   src={product.image}
                   alt={product.name}
                 />
 
-
                 <div>
 
-                  <h4>
-                    {product.name}
-                  </h4>
+                  <h4>{product.name}</h4>
 
                   <p>
-                    {product.price}
+                    {product.currency} {product.price}
                   </p>
 
                 </div>
-
 
               </div>
 
@@ -79,29 +66,32 @@ function CartDrawer({open, close}: Props) {
           )
         }
 
-
         <div className="drawer-total">
 
           <h3>
-            Total: ${total}
+            Total: PKR {total}
           </h3>
 
+          <button
+            onClick={() => {
 
-          <button>
+              close();
+
+              navigate("/checkout");
+
+            }}
+          >
             Checkout
           </button>
 
         </div>
 
-
       </div>
-
 
     </div>
 
   );
 
 }
-
 
 export default CartDrawer;

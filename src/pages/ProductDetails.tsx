@@ -3,302 +3,242 @@ import { useState, useEffect } from "react";
 import { useCart } from "../context/cartcontext";
 import { useProducts } from "../context/productcontext";
 import { useWishlist } from "../context/wishlistcontext";
-
-import men from "../assets/images/men.jpg";
-import women from "../assets/images/women.jpg";
-import kids from "../assets/images/kids.jpg";
-import toys from "../assets/images/toy.jpg";
+// import { defaultProducts } from "../data/products";
 
 function ProductDetails() {
+  const { id } = useParams();
 
-    const { id } = useParams();
+  const { addToCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const { products: adminProducts } = useProducts();
 
-    const { addToCart } = useCart();
-    const { toggleWishlist, isWishlisted } = useWishlist();
-    const { products: adminProducts } = useProducts();
+  const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState("");
 
-    const [quantity, setQuantity] = useState(1);
-    const [selectedImage, setSelectedImage] = useState("");
-    
+  const allProducts = [
+    // ...defaultProducts,
+    ...adminProducts,
+  ];
 
-    const defaultProducts = [
-
-        {
-            id: 1,
-            name: "Men Collection",
-            price: "50",
-            currency: "PKR",
-            image: men,
-            rating: "⭐⭐⭐⭐⭐",
-            description: "Premium quality products with modern style."
-        },
-        {
-            id: 2,
-            name: "Women Collection",
-            price: "60",
-            currency: "PKR",
-            image: women,
-            rating: "⭐⭐⭐⭐⭐",
-            description: "Elegant fashion for every occasion."
-        },
-        {
-            id: 3,
-            name: "Kids Collection",
-            price: "35",
-            currency: "PKR",
-            image: kids,
-            rating: "⭐⭐⭐⭐",
-            description: "Comfortable and colorful kids collection."
-        },
-        {
-            id: 4,
-            name: "Toy Collection",
-            price: "25",
-            currency: "PKR",
-            image: toys,
-            rating: "⭐⭐⭐⭐⭐",
-            description: "Safe and fun toys for children."
-        }
-    ];
-
-    const allProducts = [...defaultProducts, ...adminProducts];
-
-   const product = allProducts.find(
+  const product = allProducts.find(
     (p) => p.id === Number(id)
-);
+  );
 
-if (!product) {
-    return <h2>Product Not Found</h2>;
-}
-
-
-useEffect(() => {
-
-    if(product.images && product.images.length > 0){
-        setSelectedImage(product.images[0]);
-    }else{
-        setSelectedImage(product.image);
-    }
-
-}, [product]);
-
+  if (!product) {
     return (
+      <div
+        style={{
+          textAlign: "center",
+          padding: "100px",
+          color: "white",
+        }}
+      >
+        <h2>Product Not Found</h2>
+      </div>
+    );
+  }
 
-        <section className="product-details">
+  useEffect(() => {
+    if (product.images && product.images.length > 0) {
+      setSelectedImage(product.images[0]);
+    } else {
+      setSelectedImage(product.image);
+    }
+  }, [product]);
 
-           <div className="details-image">
+  return (
+    <section className="product-details">
 
-    <div className="main-image">
+      <div className="details-image">
 
-        <img
+        <div className="main-image">
+          <img
             src={selectedImage || product.image}
             alt={product.name}
-        />
+          />
+        </div>
 
-    </div>
+        <div className="thumbnail-images">
+          {product.images?.map((img, index) => (
+            <img
+              key={index}
+              src={img}
+              alt="thumbnail"
+              onClick={() => setSelectedImage(img)}
+            />
+          ))}
+        </div>
 
+      </div>
 
-    <div className="thumbnail-images">
+      <div className="details-info">
 
-{
-    product.images?.map((img, index) => (
+        <h1>{product.name}</h1>
 
-        <img
-            key={index}
-            src={img}
-            alt="thumbnail"
-            onClick={() => setSelectedImage(img)}
-        />
+        <p className="rating">
+          {product.rating || "⭐⭐⭐⭐⭐"}
+        </p>
 
-    ))
-}
+        <h2>
+          {product.currency} {product.price}
+        </h2>
 
-</div>
+        <p>
+          {product.description || "Premium quality product."}
+        </p>
 
-</div>
+        <div className="total-price">
+          <h3>
+            Total: {product.currency}{" "}
+            {Number(product.price) * quantity}
+          </h3>
+        </div>
 
-            <div className="details-info">
+        <div className="quantity">
 
-                <h1>{product.name}</h1>
+          <button
+            onClick={() =>
+              quantity > 1 &&
+              setQuantity(quantity - 1)
+            }
+          >
+            -
+          </button>
 
-                <p className="rating">
-                    {product.rating || "⭐⭐⭐⭐⭐"}
-                </p>
+          <span>{quantity}</span>
 
-                <h2>
-                    {product.currency} {product.price}
-                </h2>
+          <button
+            onClick={() =>
+              setQuantity(quantity + 1)
+            }
+          >
+            +
+          </button>
 
-                <p>
-                    {product.description || "Premium quality product."}
-                </p>
+        </div>
 
-              <div className="total-price">
+        <button
+          className="buy-btn"
+          onClick={() => addToCart(product)}
+        >
+          🛒 Add To Cart
+        </button>
 
-    <h3>
-        Total:
-        {" "}
-        {product.currency}{" "}
-        {Number(product.price) * quantity}
-    </h3>
+        <div className="details-buttons">
 
-</div>
+          <button
+            className="wishlist-detail-btn"
+            onClick={() => toggleWishlist(product)}
+          >
+            {isWishlisted(product.id)
+              ? "❤️ Wishlisted"
+              : "🤍 Add to Wishlist"}
+          </button>
 
+        </div>
 
-<div className="quantity">
+        <div className="delivery-box">
 
-    <button
-        onClick={() =>
-            quantity > 1 &&
-            setQuantity(quantity - 1)
-        }
-    >
-        -
-    </button>
+          <h3>🚚 Delivery Information</h3>
 
-    <span>{quantity}</span>
+          <p>📦 Estimated Delivery: 3–5 Business Days</p>
 
-    <button
-        onClick={() =>
-            setQuantity(quantity + 1)
-        }
-    >
-        +
-    </button>
+          <p>↩️ 7 Days Easy Return Policy</p>
 
-</div>
+          <p>🔒 100% Secure Payment</p>
 
+        </div>
 
-<button
-    className="buy-btn"
-    onClick={() => addToCart(product)}
->
-    🛒 Add To Cart
-</button>
-                <div className="details-buttons">
+        <div className="specifications">
 
-                    <button
-                        className="wishlist-detail-btn"
-                        onClick={() => toggleWishlist(product)}
-                    >
-                        {isWishlisted(product.id)
-                            ? "❤️ Wishlisted"
-                            : "🤍 Add to Wishlist"}
-                    </button>
+          <h3>📋 Product Specifications</h3>
 
-                </div>
+          <ul>
 
-                <div className="delivery-box">
+            <li>Premium Quality Material</li>
 
-                    <h3>🚚 Delivery Information</h3>
+            <li>Original Brand Product</li>
 
+            <li>Available in Multiple Sizes</li>
 
-                    <p>📦 Estimated Delivery: 3 - 5 Business Days</p>
+            <li>Lightweight & Comfortable</li>
 
-                    <p>↩️ 7 Days Easy Return Policy</p>
+            <li>High Durability</li>
 
-                    <p>🔒 100% Secure Payment</p>
+            <li>Secure Packaging</li>
 
-                </div>
+          </ul>
 
-                <div className="specifications">
+        </div>
 
-                    <h3>📋 Product Specifications</h3>
+        <div className="reviews">
 
-                    <ul>
+          <h3>⭐ Customer Reviews</h3>
 
-                        <li>Premium Quality Material</li>
+          <div className="review-card">
+            <h4>Ali ⭐⭐⭐⭐⭐</h4>
+            <p>Excellent quality. Highly recommended.</p>
+          </div>
 
-                        <li>Original Brand Product</li>
+          <div className="review-card">
+            <h4>Ahmed ⭐⭐⭐⭐</h4>
+            <p>Delivery was fast and product quality is very good.</p>
+          </div>
 
-                        <li>Available in Multiple Sizes</li>
+          <div className="review-card">
+            <h4>Sara ⭐⭐⭐⭐⭐</h4>
+            <p>Amazing product. Will definitely buy again.</p>
+          </div>
 
-                        <li>Lightweight & Comfortable</li>
+        </div>
 
-                        <li>High Durability</li>
+        <div className="related-products">
 
-                        <li>Secure Packaging</li>
+          <h3>🔥 Related Products</h3>
 
-                    </ul>
+          <div className="related-grid">
 
-                </div>
+            {allProducts
+              .filter((p) => p.id !== product.id)
+              .slice(0, 3)
+              .map((item) => (
 
-                {/* Customer Reviews */}
+                <Link
+                  key={item.id}
+                  to={`/product/${item.id}`}
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
+                >
 
-                <div className="reviews">
+                  <div className="related-card">
 
-                    <h3>⭐ Customer Reviews</h3>
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                    />
 
-                    <div className="review-card">
-                        <h4>Ali ⭐⭐⭐⭐⭐</h4>
-                        <p>Excellent quality. Highly recommended.</p>
-                    </div>
+                    <h4>{item.name}</h4>
 
-                    <div className="review-card">
-                        <h4>Ahmed ⭐⭐⭐⭐</h4>
-                        <p>Delivery was fast and product quality is very good.</p>
-                    </div>
+                    <p>
+                      {item.currency} {item.price}
+                    </p>
 
-                    <div className="review-card">
-                        <h4>Sara ⭐⭐⭐⭐⭐</h4>
-                        <p>Amazing product. Will definitely buy again.</p>
-                    </div>
+                  </div>
 
-                </div>
+                </Link>
 
-                {/* Related Products */}
+              ))}
 
-                <div className="related-products">
+          </div>
 
-                    <h3>🔥 Related Products</h3>
+        </div>
 
-                    <div className="related-grid">
+      </div>
 
-                        {
-                            allProducts
-                                .filter((p) => p.id !== product.id)
-                                .slice(0, 3)
-                                .map((item) => (
-
-                                    <Link
-                                        key={item.id}
-                                        to={`/product/${item.id}`}
-                                        style={{
-                                            textDecoration: "none",
-                                            color: "inherit"
-                                        }}
-                                    >
-
-                                        <div className="related-card">
-
-                                            <img
-                                                src={item.image}
-                                                alt={item.name}
-                                            />
-
-                                            <h4>{item.name}</h4>
-
-                                            <p>
-                                                {item.currency} {item.price}
-                                            </p>
-
-                                        </div>
-
-                                    </Link>
-
-                                ))
-                        }
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-    );
-
+    </section>
+  );
 }
 
 export default ProductDetails;

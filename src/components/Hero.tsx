@@ -1,4 +1,4 @@
-import hero from "../assets/images/hero.jpg";
+import hero from "../assets/tingu-mingu-logo.png";
 
 function Hero() {
   return (
@@ -33,7 +33,10 @@ function Hero() {
           🔥 50% OFF
         </div>
 
-        <img src={hero} alt="Hero" />
+        <img
+          src={hero}
+          alt="Tingu Mingu Logo"
+        />
 
       </div>
 

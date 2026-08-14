@@ -1,16 +1,14 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
-type Product = {
-  id: number;
-  name: string;
-  price: string;
-  currency: string;
-  image: string;
-  category?: string;
-  rating?: string;
-  description?: string;
-};
+export interface Product {
+  id:number;
+  name:string;
+  price:string;
+  image:string;
+  currency?: string;
+  category?:string;
+}
 
 type CartContextType = {
   cart: Product[];

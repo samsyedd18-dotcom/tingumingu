@@ -1,162 +1,147 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-
-export interface Product{
-
-  id:number;
-  name:string;
-  price:string;
-  currency:string;
-  category?:string;
-  image:string;
+export interface Product {
+  id: number;
+  name: string;
+  price: string;
+  currency?: string;
+  oldPrice?: string;
+  category?: string;
+  image: string;
   images?: string[];
-  rating?:string;
-  description?:string;
-
+  rating?: string;
+  description?: string;
 }
-
 
 interface ProductContextType {
-
-  products:Product[];
-  addProduct:(product:Product)=>void;
-  deleteProduct:(id:number)=>void;
-
+  products: Product[];
+  addProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: number) => Promise<void>;
 }
-
-
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+export function ProductProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
 
+  const [products, setProducts] = useState<Product[]>([]);
 
-export function ProductProvider({children}:{children:ReactNode}){
+  // Load Products
+  const loadProducts = async () => {
 
+    try {
 
-  const [products,setProducts] = useState<Product[]>(()=>{
+      const response = await fetch("http://localhost:5000/products");
 
+      const data = await response.json();
 
-    const saved = localStorage.getItem("products");
+      setProducts(data);
 
+    } catch (error) {
 
-    return saved ? JSON.parse(saved) : [];
+      console.log("Products load error:", error);
 
-
-  });
-
-
-
-  const addProduct = (product:Product)=>{
-
-
-    const updatedProducts = [
-
-      ...products,
-
-      product
-
-    ];
-
-
-    setProducts(updatedProducts);
-
-
-
-    localStorage.setItem(
-
-      "products",
-
-      JSON.stringify(updatedProducts)
-
-    );
-
+    }
 
   };
 
+  useEffect(() => {
 
+    loadProducts();
 
+  }, []);
 
-  const deleteProduct = (id:number)=>{
+  // Add Product
+  const addProduct = async (product: Product) => {
 
+    try {
 
-    const updatedProducts = products.filter(
+      const response = await fetch(
+        "http://localhost:5000/products",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(product),
+        }
+      );
 
-      (product)=> product.id !== id
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
 
-    );
+      const newProduct = await response.json();
 
+      setProducts((prev) => [...prev, newProduct]);
 
+      alert("Product Added Successfully");
 
-    setProducts(updatedProducts);
+    } catch (error) {
 
+      console.log(error);
 
+      alert("Product upload failed");
 
-    localStorage.setItem(
-
-      "products",
-
-      JSON.stringify(updatedProducts)
-
-    );
-
+    }
 
   };
 
+  // Delete Product
+  const deleteProduct = async (id: number) => {
 
+    try {
 
+      await fetch(`http://localhost:5000/products/${id}`, {
+        method: "DELETE",
+      });
 
-  return(
+      setProducts((prev) =>
+        prev.filter((product) => product.id !== id)
+      );
+
+    } catch (error) {
+
+      console.log(error);
+
+      alert("Delete failed");
+
+    }
+
+  };
+
+  return (
 
     <ProductContext.Provider
-
       value={{
-
         products,
-
         addProduct,
-
-        deleteProduct
-
+        deleteProduct,
       }}
-
     >
-
       {children}
-
     </ProductContext.Provider>
 
   );
 
-
 }
 
-
-
-
-
-export function useProducts(){
-
+export function useProducts() {
 
   const context = useContext(ProductContext);
 
-
-
-  if(!context){
-
+  if (!context) {
 
     throw new Error(
-
       "useProducts must be inside ProductProvider"
-
     );
-
 
   }
 
-
-
   return context;
-
 
 }

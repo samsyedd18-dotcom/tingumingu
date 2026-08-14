@@ -3,7 +3,7 @@ function Footer() {
     <footer className="footer">
 
       <div>
-        <h2>Tingu Mingu Toys</h2>
+        <h2>Tingu Mingu toys</h2>
         <p>
           Making kids happy with amazing toys.
         </p>

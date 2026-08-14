@@ -6,15 +6,17 @@ interface Product {
   id: number;
   name: string;
   price: string;
-  currency: string;
+  currency?: string;
   image: string;
 
   category?: string;
   rating?: string;
   description?: string;
   oldPrice?: string;
+  images?: string[];
 
 }
+
 
 interface WishlistContextType {
 
@@ -26,8 +28,11 @@ interface WishlistContextType {
 
 }
 
+
 const WishlistContext =
   createContext<WishlistContextType | undefined>(undefined);
+
+
 
 export function WishlistProvider({
   children,
@@ -35,44 +40,67 @@ export function WishlistProvider({
   children: ReactNode;
 }) {
 
+
   const [wishlist, setWishlist] = useState<Product[]>([]);
 
+
+
   const toggleWishlist = (product: Product) => {
+
 
     const exists = wishlist.some(
       (item) => item.id === product.id
     );
 
+
     if (exists) {
 
+
       setWishlist((prev) =>
-        prev.filter((item) => item.id !== product.id)
+        prev.filter(
+          (item) => item.id !== product.id
+        )
       );
+
 
     } else {
 
-      setWishlist((prev) => [...prev, product]);
+
+      setWishlist((prev) => [
+        ...prev,
+        product
+      ]);
+
 
     }
 
+
   };
 
-  const isWishlisted = (id: number) => {
+
+
+  const isWishlisted = (id:number) => {
+
 
     return wishlist.some(
       (item) => item.id === id
     );
 
+
   };
+
+
 
   return (
 
     <WishlistContext.Provider
+
       value={{
         wishlist,
         toggleWishlist,
         isWishlisted,
       }}
+
     >
 
       {children}
@@ -81,11 +109,17 @@ export function WishlistProvider({
 
   );
 
+
 }
+
+
 
 export function useWishlist() {
 
+
   const context = useContext(WishlistContext);
+
+
 
   if (!context) {
 
@@ -95,6 +129,9 @@ export function useWishlist() {
 
   }
 
+
+
   return context;
+
 
 }
