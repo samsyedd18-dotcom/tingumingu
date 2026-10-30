@@ -44,9 +44,7 @@ function Hero() {
       </div>
 
       <div className="hero-right">
-        <div className="discount-badge">
-          🔥 50% OFF
-        </div>
+
 
         <img
           src={hero}

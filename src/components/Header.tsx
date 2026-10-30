@@ -14,9 +14,11 @@ import logo from "../assets/tingu-mingu-logo.png";
 
 interface HeaderProps {
   openCart: () => void;
+  theme: "light" | "dark";
+  toggleTheme: () => void;
 }
 
-function Header({ openCart }: HeaderProps) {
+function Header({ openCart, theme, toggleTheme }: HeaderProps) {
   const { cart } = useCart();
   const { wishlist } = useWishlist();
   const { search, setSearch } = useSearch();
@@ -84,19 +86,22 @@ function Header({ openCart }: HeaderProps) {
         </div>
 
         <div className="header-icons">
+          <button
+            className="theme-header-btn"
+            onClick={toggleTheme}
+            title={theme === "light" ? "Dark Mode" : "Light Mode"}
+          >
+            {theme === "light" ? "🌙" : "☀️"}
+            <span>{theme === "light" ? "Dark" : "Light"}</span>
+          </button>
+
           <button className="wishlist-btn" onClick={goWishlist}>
             ❤️ {wishlist.length}
           </button>
 
           {user ? (
             <>
-              <span
-                style={{
-                  color: "white",
-                  fontWeight: "600",
-                  marginRight: "10px",
-                }}
-              >
+              <span className="header-user">
                 👋 {user.email}
               </span>
 
@@ -131,17 +136,11 @@ function Header({ openCart }: HeaderProps) {
 
       <nav className={menuOpen ? "navbar active" : "navbar"}>
         <Link to="/" onClick={closeMenu}>Home</Link>
-
         <Link to="/#products" onClick={closeMenu}>Shop</Link>
-
         <Link to="/category/Men" onClick={closeMenu}>Men</Link>
-
         <Link to="/category/Women" onClick={closeMenu}>Women</Link>
-
         <Link to="/category/Kids" onClick={closeMenu}>Kids</Link>
-
         <Link to="/category/Toys" onClick={closeMenu}>Toys</Link>
-
         <Link to="/#footer" onClick={closeMenu}>Contact</Link>
       </nav>
     </header>
