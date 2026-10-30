@@ -17,14 +17,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   const [currency, setCurrency] = useState("PKR");
   const [loading, setLoading] = useState(false);
 
-  // FETCH ORDERS
   const fetchOrders = async () => {
     try {
       const response = await fetch("/api/orders");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch orders");
-      }
+      if (!response.ok) throw new Error("Failed to fetch orders");
 
       const data = await response.json();
       setOrders(data);
@@ -44,7 +40,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       return;
     }
 
-    if (Number(price) <= 0) {
+    if (!Number.isFinite(Number(price)) || Number(price) <= 0) {
       alert("Please enter a valid price");
       return;
     }
@@ -54,7 +50,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     setLoading(true);
 
     try {
-      // Upload image to Cloudinary
       const formData = new FormData();
       formData.append("file", image);
       formData.append("upload_preset", "tingu-mingu");
@@ -75,7 +70,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         );
       }
 
-      // Save product to database
+      // Save product WITHOUT fake rating
       await addProduct({
         id: 0,
         name: productName.trim(),
@@ -85,13 +80,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         description: "",
         currency,
         images: [cloudData.secure_url],
-        rating: "⭐⭐⭐⭐⭐",
       });
 
-      // SUCCESS MESSAGE
       alert("Product Added Successfully!");
 
-      // Reset form only after successful save
       setProductName("");
       setPrice("");
       setCategory("");
@@ -102,9 +94,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         "product-image"
       ) as HTMLInputElement | null;
 
-      if (fileInput) {
-        fileInput.value = "";
-      }
+      if (fileInput) fileInput.value = "";
 
     } catch (error) {
       console.error("Product error:", error);
@@ -121,9 +111,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
   // DELETE PRODUCT
   const handleDeleteProduct = async (id: number) => {
-    if (!window.confirm("Delete this product?")) {
-      return;
-    }
+    if (!window.confirm("Delete this product?")) return;
 
     try {
       await deleteProduct(id);
@@ -169,11 +157,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             <div className="dashboard-card customers">
               <h3>👥 Customers</h3>
               <h2>
-                {
-                  new Set(
-                    orders.map((order: any) => order.email)
-                  ).size
-                }
+                {new Set(orders.map((order: any) => order.email)).size}
               </h2>
               <p>Total Customers</p>
             </div>
@@ -232,166 +216,157 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // PRODUCTS PAGE
-  const renderProducts = () => {
-    return (
-      <section className="admin-panel">
-        <div className="admin-content">
-          <h2>📦 Products</h2>
+  const renderProducts = () => (
+    <section className="admin-panel">
+      <div className="admin-content">
+        <h2>📦 Products</h2>
 
-          <div className="add-product">
-            <h2>➕ Add Product</h2>
+        <div className="add-product">
+          <h2>➕ Add Product</h2>
 
-            <input
-              placeholder="Product Name"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-            />
+          <input
+            placeholder="Product Name"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+          />
 
-            <input
-              placeholder="Price"
-              type="number"
-              min="1"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
+          <input
+            placeholder="Price"
+            type="number"
+            min="1"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
 
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
-              <option value="PKR">🇵🇰 PKR</option>
-              <option value="USD">🇺🇸 USD</option>
-              <option value="EUR">🇪🇺 EUR</option>
-              <option value="GBP">🇬🇧 GBP</option>
-            </select>
-
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">Select Category</option>
-              <option value="Men">Men</option>
-              <option value="Women">Women</option>
-              <option value="Kids">Kids</option>
-              <option value="Toys">Toys</option>
-            </select>
-
-            <input
-              id="product-image"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setImage(file);
-              }}
-            />
-
-            <button
-              onClick={handleAddProduct}
-              disabled={loading}
-            >
-              {loading ? "Uploading..." : "Add Product"}
-            </button>
-          </div>
-
-          <h2>📋 Products List</h2>
-
-          <div className="products-list">
-            {products.length === 0 ? (
-              <p>No Products Found</p>
-            ) : (
-              products.map((product: any) => (
-                <div
-                  key={product.id}
-                  className="admin-product"
-                >
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    width="80"
-                  />
-
-                  <div>
-                    <h3>{product.name}</h3>
-                    <p>
-                      {product.currency || "PKR"} {product.price}
-                    </p>
-                    <p>Category: {product.category}</p>
-                  </div>
-
-                  <button
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  };
-
-  // ORDERS PAGE
-  const renderOrders = () => {
-    return (
-      <section className="admin-panel">
-        <div className="admin-content">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "25px",
-            }}
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
           >
-            <h2>🛒 Orders</h2>
-            <button onClick={fetchOrders}>🔄 Refresh Orders</button>
-          </div>
+            <option value="PKR">🇵🇰 PKR</option>
+            <option value="USD">🇺🇸 USD</option>
+            <option value="EUR">🇪🇺 EUR</option>
+            <option value="GBP">🇬🇧 GBP</option>
+          </select>
 
-          {orders.length === 0 ? (
-            <div className="dashboard-box">
-              <h3>No Orders Found</h3>
-              <p>Orders placed from checkout will appear here.</p>
-            </div>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">Select Category</option>
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
+            <option value="Kids">Kids</option>
+            <option value="Toys">Toys</option>
+          </select>
+
+          <input
+            id="product-image"
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) setImage(file);
+            }}
+          />
+
+          <button
+            onClick={handleAddProduct}
+            disabled={loading}
+          >
+            {loading ? "Uploading..." : "Add Product"}
+          </button>
+        </div>
+
+        <h2>📋 Products List</h2>
+
+        <div className="products-list">
+          {products.length === 0 ? (
+            <p>No Products Found</p>
           ) : (
-            <div className="dashboard-box">
-              <table className="orders-table">
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Address</th>
-                    <th>Payment</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
+            products.map((product: any) => (
+              <div key={product.id} className="admin-product">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  width="80"
+                />
 
-                <tbody>
-                  {orders.map((order: any) => (
-                    <tr key={order.id}>
-                      <td>#{order.id}</td>
-                      <td>{order.customer_name}</td>
-                      <td>{order.phone}</td>
-                      <td>{order.email}</td>
-                      <td>{order.address}</td>
-                      <td>{order.payment_method}</td>
-                      <td>PKR {order.total}</td>
-                      <td className="pending">Pending</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                <div>
+                  <h3>{product.name}</h3>
+                  <p>
+                    {product.currency || "PKR"} {product.price}
+                  </p>
+                  <p>Category: {product.category}</p>
+                </div>
+
+                <button onClick={() => handleDeleteProduct(product.id)}>
+                  🗑 Delete
+                </button>
+              </div>
+            ))
           )}
         </div>
-      </section>
-    );
-  };
+      </div>
+    </section>
+  );
+
+  // ORDERS PAGE
+  const renderOrders = () => (
+    <section className="admin-panel">
+      <div className="admin-content">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "25px",
+          }}
+        >
+          <h2>🛒 Orders</h2>
+          <button onClick={fetchOrders}>🔄 Refresh Orders</button>
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="dashboard-box">
+            <h3>No Orders Found</h3>
+            <p>Orders placed from checkout will appear here.</p>
+          </div>
+        ) : (
+          <div className="dashboard-box">
+            <table className="orders-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Address</th>
+                  <th>Payment</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {orders.map((order: any) => (
+                  <tr key={order.id}>
+                    <td>#{order.id}</td>
+                    <td>{order.customer_name}</td>
+                    <td>{order.phone}</td>
+                    <td>{order.email}</td>
+                    <td>{order.address}</td>
+                    <td>{order.payment_method}</td>
+                    <td>PKR {order.total}</td>
+                    <td className="pending">Pending</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 
   // CUSTOMERS PAGE
   const renderCustomers = () => {
@@ -472,7 +447,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     );
   };
 
-  // PAGE SWITCHING
   if (activePage === "dashboard") return renderDashboard();
   if (activePage === "products") return renderProducts();
   if (activePage === "orders") return renderOrders();

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -16,50 +17,50 @@ interface HeaderProps {
 }
 
 function Header({ openCart }: HeaderProps) {
-
   const { cart } = useCart();
   const { wishlist } = useWishlist();
   const { search, setSearch } = useSearch();
   const { user } = useAuth();
 
   const navigate = useNavigate();
-
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const closeMenu = () => setMenuOpen(false);
+
   const goWishlist = () => {
-    document.getElementById("wishlist")?.scrollIntoView({
-      behavior: "smooth",
-    });
+    if (window.location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        document.getElementById("wishlist")?.scrollIntoView({
+          behavior: "smooth",
+        });
+      }, 100);
+    } else {
+      document.getElementById("wishlist")?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }
+    closeMenu();
   };
 
   const handleLogout = async () => {
-
     try {
-
       await signOut(auth);
-
       alert("Logged Out Successfully");
-
       navigate("/");
-
-    } catch (error) {
-
+      closeMenu();
+    } catch {
       alert("Logout Failed");
-
     }
-
   };
 
   return (
-
     <header>
-
       <div className="topbar">
-
-        {/* LOGO */}
         <Link
           to="/"
           className="logo"
+          onClick={closeMenu}
           style={{
             textDecoration: "none",
             display: "flex",
@@ -73,35 +74,22 @@ function Header({ openCart }: HeaderProps) {
           />
         </Link>
 
-
-        {/* SEARCH */}
         <div className="search-box">
-
           <input
             type="text"
             placeholder="🔍 Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-
         </div>
 
-
-        {/* HEADER ICONS */}
         <div className="header-icons">
-
-          <button
-            className="wishlist-btn"
-            onClick={goWishlist}
-          >
+          <button className="wishlist-btn" onClick={goWishlist}>
             ❤️ {wishlist.length}
           </button>
 
-
           {user ? (
-
             <>
-
               <span
                 style={{
                   color: "white",
@@ -112,47 +100,25 @@ function Header({ openCart }: HeaderProps) {
                 👋 {user.email}
               </span>
 
-              <button
-                className="login-btn"
-                onClick={handleLogout}
-              >
+              <button className="login-btn" onClick={handleLogout}>
                 Logout
               </button>
-
             </>
-
           ) : (
-
             <>
-
-              <Link to="/login">
-
-                <button className="login-btn">
-                  Login
-                </button>
-
+              <Link to="/login" onClick={closeMenu}>
+                <button className="login-btn">Login</button>
               </Link>
 
-              <Link to="/register">
-
-                <button className="login-btn">
-                  Register
-                </button>
-
+              <Link to="/register" onClick={closeMenu}>
+                <button className="login-btn">Register</button>
               </Link>
-
             </>
-
           )}
 
-
-          <button
-            className="cart-btn"
-            onClick={openCart}
-          >
+          <button className="cart-btn" onClick={openCart}>
             🛒 {cart.length}
           </button>
-
 
           <button
             className="menu-btn"
@@ -160,35 +126,26 @@ function Header({ openCart }: HeaderProps) {
           >
             ☰
           </button>
-
         </div>
-
       </div>
 
-
-      {/* NAVBAR */}
       <nav className={menuOpen ? "navbar active" : "navbar"}>
+        <Link to="/" onClick={closeMenu}>Home</Link>
 
-        <Link to="/">Home</Link>
+        <Link to="/#products" onClick={closeMenu}>Shop</Link>
 
-        <a href="#products">Shop</a>
+        <Link to="/category/Men" onClick={closeMenu}>Men</Link>
 
-        <a href="#categories">Men</a>
+        <Link to="/category/Women" onClick={closeMenu}>Women</Link>
 
-        <a href="#categories">Women</a>
+        <Link to="/category/Kids" onClick={closeMenu}>Kids</Link>
 
-        <a href="#categories">Kids</a>
+        <Link to="/category/Toys" onClick={closeMenu}>Toys</Link>
 
-        <a href="#categories">Toys</a>
-
-        <a href="#footer">Contact</a>
-
+        <Link to="/#footer" onClick={closeMenu}>Contact</Link>
       </nav>
-
     </header>
-
   );
-
 }
 
 export default Header;

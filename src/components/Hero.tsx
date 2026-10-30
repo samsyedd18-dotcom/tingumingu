@@ -1,11 +1,17 @@
+
 import hero from "../assets/tingu-mingu-logo.png";
 
 function Hero() {
+  const goToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   return (
     <section className="hero">
-
       <div className="hero-left">
-
         <span className="hero-badge">
           ⭐ New Collection 2026
         </span>
@@ -21,14 +27,23 @@ function Hero() {
         </p>
 
         <div className="hero-buttons">
-          <button className="shopBtn">Shop Now</button>
-          <button className="exploreBtn">Explore</button>
-        </div>
+          <button
+            className="shopBtn"
+            onClick={() => goToSection("products")}
+          >
+            Shop Now
+          </button>
 
+          <button
+            className="exploreBtn"
+            onClick={() => goToSection("categories")}
+          >
+            Explore
+          </button>
+        </div>
       </div>
 
       <div className="hero-right">
-
         <div className="discount-badge">
           🔥 50% OFF
         </div>
@@ -37,9 +52,7 @@ function Hero() {
           src={hero}
           alt="Tingu Mingu Logo"
         />
-
       </div>
-
     </section>
   );
 }

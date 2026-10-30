@@ -1,3 +1,4 @@
+
 import { Routes, Route } from "react-router-dom";
 import { useState } from "react";
 
@@ -20,7 +21,6 @@ import Checkout from "./pages/Checkout";
 import "./App.css";
 
 function Home() {
-
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
@@ -47,18 +47,42 @@ function Home() {
       />
     </>
   );
+}
 
+function CategoryPage() {
+  const [cartOpen, setCartOpen] = useState(false);
+
+  return (
+    <>
+      <Header
+        openCart={() => setCartOpen(true)}
+      />
+
+      <Products />
+
+      <Footer />
+
+      <Cart />
+
+      <CartDrawer
+        open={cartOpen}
+        close={() => setCartOpen(false)}
+      />
+    </>
+  );
 }
 
 function App() {
-
   return (
-
     <Routes>
-
       <Route
         path="/"
         element={<Home />}
+      />
+
+      <Route
+        path="/category/:category"
+        element={<CategoryPage />}
       />
 
       <Route
@@ -85,11 +109,8 @@ function App() {
         path="/admin"
         element={<Admin />}
       />
-
     </Routes>
-
   );
-
 }
 
 export default App;
