@@ -38,13 +38,6 @@ const defaultCategories: Category[] = [
     image:
       "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600",
   },
-  {
-    id: "default-other",
-    name: "Other",
-    description: "Kitchen, Electronics, Accessories and more",
-    image:
-      "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600",
-  },
 ];
 
 function Categories() {
@@ -71,6 +64,11 @@ function Categories() {
 
           data.forEach((item: Category) => {
             if (!item.name) return;
+
+            // Ignore Other category
+            if (item.name.trim().toLowerCase() === "other") {
+              return;
+            }
 
             const existingIndex = mergedCategories.findIndex(
               (category) =>
@@ -115,50 +113,41 @@ function Categories() {
       {loading && <p>Loading categories...</p>}
 
       <div className="category-grid">
-        {categories.map((item) => {
-          const isOther =
-            item.name.toLowerCase() === "other";
-
-          const categoryLink = isOther
-            ? "/category/other"
-            : "/category/" + encodeURIComponent(item.name);
-
-          return (
-            <div
-              className="category-card"
-              key={item.id || item.name}
-            >
-              <div className="category-placeholder">
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="category-image"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="category-image">
-                    🛍️
-                  </div>
-                )}
-              </div>
-
-              <h3>{item.name}</h3>
-
-              <p>
-                {item.description ||
-                  "Explore our collection"}
-              </p>
-
-              <Link
-                to={categoryLink}
-                className="category-shop-button"
-              >
-                Shop Now
-              </Link>
+        {categories.map((item) => (
+          <div
+            className="category-card"
+            key={item.id || item.name}
+          >
+            <div className="category-placeholder">
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="category-image"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="category-image">
+                  🛍️
+                </div>
+              )}
             </div>
-          );
-        })}
+
+            <h3>{item.name}</h3>
+
+            <p>
+              {item.description ||
+                "Explore our collection"}
+            </p>
+
+            <Link
+              to={`/category/${encodeURIComponent(item.name)}`}
+              className="category-shop-button"
+            >
+              Shop Now
+            </Link>
+          </div>
+        ))}
       </div>
     </section>
   );

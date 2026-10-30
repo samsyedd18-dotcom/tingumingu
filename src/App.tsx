@@ -17,7 +17,6 @@ import Register from "./components/Register";
 import ProductDetails from "./pages/ProductDetails";
 import Admin from "./pages/Admin";
 import Checkout from "./pages/Checkout";
-import OtherCategory from "./pages/OtherCategory";
 
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -83,7 +82,6 @@ function CategoryPage({ theme, toggleTheme }: ThemeProps) {
 function App() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const savedTheme = localStorage.getItem("store-theme");
-
     return savedTheme === "dark" ? "dark" : "light";
   });
 
@@ -104,57 +102,34 @@ function App() {
 
   return (
     <>
-      {/* Automatically scroll to top on page change */}
       <ScrollToTop />
 
       <Routes>
-        {/* HOME */}
         <Route
           path="/"
           element={<Home {...themeProps} />}
         />
 
-        {/* OTHER CATEGORIES */}
-        <Route
-          path="/category/other"
-          element={<OtherCategory />}
-        />
-
-        {/* NORMAL CATEGORY PAGES */}
         <Route
           path="/category/:category"
           element={<CategoryPage {...themeProps} />}
         />
 
-        {/* LOGIN */}
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+        <Route path="/login" element={<Login />} />
 
-        {/* REGISTER */}
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+        <Route path="/register" element={<Register />} />
 
-        {/* PRODUCT DETAILS */}
         <Route
           path="/product/:id"
           element={<ProductDetails />}
         />
 
-        {/* CHECKOUT */}
         <Route
           path="/checkout"
           element={<Checkout />}
         />
 
-        {/* ADMIN */}
-        <Route
-          path="/admin"
-          element={<Admin />}
-        />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </>
   );
