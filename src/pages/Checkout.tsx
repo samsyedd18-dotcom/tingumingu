@@ -55,18 +55,31 @@ function Checkout() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          customer_name: name,
-          phone,
-          email,
+          customer_name: name.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
           country,
           province,
           city,
-          postal_code: postalCode,
-          address,
+          postal_code: postalCode.trim(),
+          address: address.trim(),
           payment_method: payment,
           total,
+          currency,
         }),
       });
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        const errorText = await response.text();
+
+        console.error("Non-JSON server response:", errorText);
+
+        throw new Error(
+          `Server returned an invalid response. Status: ${response.status}`
+        );
+      }
 
       const data = await response.json();
 
@@ -79,10 +92,12 @@ function Checkout() {
       setName("");
       setPhone("");
       setEmail("");
+      setCountry("Pakistan");
       setProvince("");
       setCity("");
       setPostalCode("");
       setAddress("");
+      setPayment("Cash On Delivery");
 
     } catch (error) {
       console.error("Order Error:", error);
@@ -90,7 +105,7 @@ function Checkout() {
       alert(
         error instanceof Error
           ? error.message
-          : "Order Failed"
+          : "Order Failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -102,55 +117,86 @@ function Checkout() {
       <div className="checkout-left">
         <h2>📍 Shipping Address</h2>
 
-        <input placeholder="Full Name" value={name}
-          onChange={(e) => setName(e.target.value)} />
+        <input
+          type="text"
+          placeholder="Full Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
 
-        <input placeholder="Phone Number" value={phone}
-          onChange={(e) => setPhone(e.target.value)} />
+        <input
+          type="tel"
+          placeholder="Phone Number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
 
-        <input placeholder="Email Address" value={email}
-          onChange={(e) => setEmail(e.target.value)} />
+        <input
+          type="email"
+          placeholder="Email Address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <select value={country} onChange={(e) => setCountry(e.target.value)}>
-          <option>Pakistan</option>
-          <option>UAE</option>
-          <option>Saudi Arabia</option>
-          <option>Qatar</option>
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+        >
+          <option value="Pakistan">Pakistan</option>
+          <option value="UAE">UAE</option>
+          <option value="Saudi Arabia">Saudi Arabia</option>
+          <option value="Qatar">Qatar</option>
         </select>
 
-        <select value={province} onChange={(e) => setProvince(e.target.value)}>
+        <select
+          value={province}
+          onChange={(e) => setProvince(e.target.value)}
+        >
           <option value="">Select Province</option>
-          <option>Sindh</option>
-          <option>Punjab</option>
-          <option>KPK</option>
-          <option>Balochistan</option>
-          <option>Gilgit Baltistan</option>
-          <option>AJK</option>
+          <option value="Sindh">Sindh</option>
+          <option value="Punjab">Punjab</option>
+          <option value="KPK">KPK</option>
+          <option value="Balochistan">Balochistan</option>
+          <option value="Gilgit Baltistan">Gilgit Baltistan</option>
+          <option value="AJK">AJK</option>
         </select>
 
-        <select value={city} onChange={(e) => setCity(e.target.value)}>
+        <select
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        >
           <option value="">Select City</option>
-          <option>Karachi</option>
-          <option>Lahore</option>
-          <option>Islamabad</option>
-          <option>Rawalpindi</option>
-          <option>Hyderabad</option>
-          <option>Multan</option>
-          <option>Faisalabad</option>
-          <option>Peshawar</option>
-          <option>Quetta</option>
+          <option value="Karachi">Karachi</option>
+          <option value="Lahore">Lahore</option>
+          <option value="Islamabad">Islamabad</option>
+          <option value="Rawalpindi">Rawalpindi</option>
+          <option value="Hyderabad">Hyderabad</option>
+          <option value="Multan">Multan</option>
+          <option value="Faisalabad">Faisalabad</option>
+          <option value="Peshawar">Peshawar</option>
+          <option value="Quetta">Quetta</option>
         </select>
 
-        <input placeholder="Postal Code" value={postalCode}
-          onChange={(e) => setPostalCode(e.target.value)} />
+        <input
+          type="text"
+          placeholder="Postal Code"
+          value={postalCode}
+          onChange={(e) => setPostalCode(e.target.value)}
+        />
 
-        <textarea placeholder="Complete Address" value={address}
-          onChange={(e) => setAddress(e.target.value)} />
+        <textarea
+          placeholder="Complete Address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
 
-        <select value={payment} onChange={(e) => setPayment(e.target.value)}>
-          <option>Cash On Delivery</option>
-          <option>PayPal</option>
-          <option>Credit / Debit Card</option>
+        <select
+          value={payment}
+          onChange={(e) => setPayment(e.target.value)}
+        >
+          <option value="Cash On Delivery">Cash On Delivery</option>
+          <option value="PayPal">PayPal</option>
+          <option value="Credit / Debit Card">Credit / Debit Card</option>
         </select>
       </div>
 
@@ -162,11 +208,17 @@ function Checkout() {
         ) : (
           cart.map((item: any) => (
             <div className="checkout-item" key={item.id}>
-              <img src={item.image} alt={item.name} width="70" />
+              <img
+                src={item.image}
+                alt={item.name}
+                width="70"
+              />
 
               <div>
                 <h4>{item.name}</h4>
-                <p>{item.currency} {item.price}</p>
+                <p>
+                  {item.currency} {item.price}
+                </p>
               </div>
             </div>
           ))
@@ -175,7 +227,9 @@ function Checkout() {
         <hr />
 
         <div className="checkout-total">
-          <h3>Total: {currency} {total}</h3>
+          <h3>
+            Total: {currency} {total.toFixed(2)}
+          </h3>
         </div>
 
         <button
