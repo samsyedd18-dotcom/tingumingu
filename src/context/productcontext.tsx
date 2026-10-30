@@ -31,7 +31,6 @@ const ProductContext = createContext<
   ProductContextType | undefined
 >(undefined);
 
-// Vercel backend API
 const API_URL = "/api";
 
 export function ProductProvider({
@@ -41,7 +40,7 @@ export function ProductProvider({
 }) {
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Load Products
+  // LOAD PRODUCTS
   const loadProducts = async () => {
     try {
       const response = await fetch(`${API_URL}/products`);
@@ -51,7 +50,6 @@ export function ProductProvider({
       }
 
       const data = await response.json();
-
       setProducts(data);
     } catch (error) {
       console.error("Products load error:", error);
@@ -62,62 +60,41 @@ export function ProductProvider({
     loadProducts();
   }, []);
 
-  // Add Product
+  // ADD PRODUCT
   const addProduct = async (product: Product) => {
-    try {
-      const response = await fetch(`${API_URL}/products`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(product),
-      });
+    const response = await fetch(`${API_URL}/products`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(product),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || "Product upload failed"
-        );
-      }
+    const data = await response.json();
 
-      const newProduct = await response.json();
-
-      setProducts((prev) => [...prev, newProduct]);
-
-      alert("Product Added Successfully");
-    } catch (error) {
-      console.error("Product add error:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Product upload failed"
-      );
+    if (!response.ok) {
+      throw new Error(data.error || "Product upload failed");
     }
+
+    setProducts((prev) => [...prev, data]);
   };
 
-  // Delete Product
+  // DELETE PRODUCT
   const deleteProduct = async (id: number) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/products/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Product delete failed");
+    const response = await fetch(
+      `${API_URL}/products/${id}`,
+      {
+        method: "DELETE",
       }
+    );
 
-      setProducts((prev) =>
-        prev.filter((product) => product.id !== id)
-      );
-
-      alert("Product Deleted Successfully");
-    } catch (error) {
-      console.error("Product delete error:", error);
-      alert("Delete failed");
+    if (!response.ok) {
+      throw new Error("Product delete failed");
     }
+
+    setProducts((prev) =>
+      prev.filter((product) => product.id !== id)
+    );
   };
 
   return (
