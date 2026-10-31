@@ -2222,3 +2222,114 @@ footer p {
     padding: 20px;
   }
 }
+
+/* new */
+
+.tm-notification-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(5px);
+}
+
+.tm-notification-box {
+  width: 100%;
+  max-width: 380px;
+  padding: 30px 25px;
+  border-radius: 22px;
+  background: #ffffff;
+  color: #222222;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: tmPopupIn 0.25s ease-out;
+}
+
+.tm-notification-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.tm-notification-box h2 {
+  font-size: 21px;
+  margin: 0 0 12px;
+  color: #222222;
+}
+
+.tm-notification-box p {
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 22px;
+  overflow-wrap: anywhere;
+}
+
+.tm-notification-box button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 30px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tm-notification-box button:hover {
+  background: #d97706;
+}
+
+@keyframes tmPopupIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* new */
+
+.product-coupon-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.product-coupon-input input {
+  flex: 1;
+  min-width: 120px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+}
+
+.product-coupon-input button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #f59e0b;
+  color: white;
+  cursor: pointer;
+}
+
+.coupon-success-message {
+  width: 100%;
+  color: #16a34a;
+  font-size: 13px;
+}
+
+.coupon-error-message {
+  width: 100%;
+  color: #dc2626;
+  font-size: 13px;
+}

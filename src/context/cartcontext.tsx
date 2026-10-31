@@ -14,23 +14,33 @@ export interface Product {
   quantity: number;
 }
 
+export interface AppliedCoupon {
+  code: string;
+  discount_type: string;
+  discount_value: number;
+}
+
 type CartContextType = {
   cart: Product[];
+  appliedCoupons: Record<number, AppliedCoupon>;
   addToCart: (product: Omit<Product, "quantity">) => void;
   removeFromCart: (id: number) => void;
   updateQuantity: (id: number, quantity: number) => void;
   clearCart: () => void;
+  applyCoupon: (productId: number, coupon: AppliedCoupon) => void;
+  removeCoupon: (productId: number) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Product[]>([]);
+  const [appliedCoupons, setAppliedCoupons] =
+    useState<Record<number, AppliedCoupon>>({});
 
   const addToCart = (product: Omit<Product, "quantity">) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
-
       const availableStock = Number(product.stock ?? 0);
 
       if (existing) {
@@ -57,6 +67,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: number) => {
     setCart((prev) => prev.filter((item) => item.id !== id));
+
+    setAppliedCoupons((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
   };
 
   const updateQuantity = (id: number, quantity: number) => {
@@ -79,16 +95,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const applyCoupon = (productId: number, coupon: AppliedCoupon) => {
+    setAppliedCoupons((prev) => ({
+      ...prev,
+      [productId]: coupon,
+    }));
+  };
+
+  const removeCoupon = (productId: number) => {
+    setAppliedCoupons((prev) => {
+      const updated = { ...prev };
+      delete updated[productId];
+      return updated;
+    });
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    setAppliedCoupons({});
+  };
 
   return (
     <CartContext.Provider
       value={{
         cart,
+        appliedCoupons,
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
+        applyCoupon,
+        removeCoupon,
       }}
     >
       {children}

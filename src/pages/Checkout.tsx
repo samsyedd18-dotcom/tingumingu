@@ -1,8 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { useCart } from "../context/cartcontext";
 
 function Checkout() {
-  const { cart, clearCart } = useCart();
+  const { cart, appliedCoupons, clearCart } = useCart();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -18,12 +19,10 @@ function Checkout() {
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
-  // VERCEL BACKEND API
   const API_URL = import.meta.env.DEV
     ? "http://localhost:5000/api"
     : "https://tingumingu-tau.vercel.app/api";
 
-  // LOAD DELIVERY FEE
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -49,10 +48,36 @@ function Checkout() {
     loadSettings();
   }, []);
 
-  // CALCULATE SUBTOTAL
+  // Calculate each product's discounted unit price
+  const getItemPrice = (item: (typeof cart)[number]) => {
+    const originalPrice = Number(item.price);
+    const coupon = appliedCoupons[item.id];
+
+    if (!coupon) return originalPrice;
+
+    const discountValue = Number(coupon.discount_value);
+
+    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+      return originalPrice;
+    }
+
+    const discount =
+      coupon.discount_type === "percentage"
+        ? (originalPrice * Math.min(discountValue, 100)) / 100
+        : Math.min(discountValue, originalPrice);
+
+    return Math.max(0, originalPrice - discount);
+  };
+
   const subtotal = cart.reduce((sum, item) => {
+    return sum + getItemPrice(item) * item.quantity;
+  }, 0);
+
+  const originalSubtotal = cart.reduce((sum, item) => {
     return sum + Number(item.price) * item.quantity;
   }, 0);
+
+  const totalDiscount = originalSubtotal - subtotal;
 
   const currency =
     cart.length > 0 ? cart[0].currency || "PKR" : "PKR";
@@ -63,7 +88,6 @@ function Checkout() {
 
   const total = subtotal + deliveryFee;
 
-  // PLACE ORDER
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
       alert("Your cart is empty!");
@@ -100,6 +124,7 @@ function Checkout() {
       const orderItems = cart.map((item) => ({
         product_id: item.id,
         quantity: item.quantity,
+        coupon_code: appliedCoupons[item.id]?.code || null,
       }));
 
       const response = await fetch(`${API_URL}/orders`, {
@@ -126,7 +151,6 @@ function Checkout() {
 
       if (!contentType.includes("application/json")) {
         const errorText = await response.text();
-
         console.error("Server Response:", errorText);
 
         throw new Error(
@@ -141,13 +165,11 @@ function Checkout() {
       }
 
       alert(
-        `🎉 Order Placed Successfully!\nOrder Total: ${data.total ?? total} ${currency}`
+        `🎉 Order Placed Successfully!\nOrder Total: ${data.total ?? total} ${data.currency || currency}`
       );
 
-      // CLEAR CART AFTER SUCCESSFUL ORDER
       clearCart();
 
-      // RESET FORM
       setName("");
       setPhone("");
       setEmail("");
@@ -176,41 +198,23 @@ function Checkout() {
       <div className="checkout-left">
         <h2>📍 Shipping Address</h2>
 
-        <input
-          type="text"
-          placeholder="Full Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <input type="text" placeholder="Full Name" value={name}
+          onChange={(e) => setName(e.target.value)} />
 
-        <input
-          type="tel"
-          placeholder="Phone Number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+        <input type="tel" placeholder="Phone Number" value={phone}
+          onChange={(e) => setPhone(e.target.value)} />
 
-        <input
-          type="email"
-          placeholder="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <input type="email" placeholder="Email Address" value={email}
+          onChange={(e) => setEmail(e.target.value)} />
 
-        <select
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-        >
+        <select value={country} onChange={(e) => setCountry(e.target.value)}>
           <option value="Pakistan">Pakistan</option>
           <option value="UAE">UAE</option>
           <option value="Saudi Arabia">Saudi Arabia</option>
           <option value="Qatar">Qatar</option>
         </select>
 
-        <select
-          value={province}
-          onChange={(e) => setProvince(e.target.value)}
-        >
+        <select value={province} onChange={(e) => setProvince(e.target.value)}>
           <option value="">Select Province</option>
           <option value="Sindh">Sindh</option>
           <option value="Punjab">Punjab</option>
@@ -220,10 +224,7 @@ function Checkout() {
           <option value="AJK">AJK</option>
         </select>
 
-        <select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-        >
+        <select value={city} onChange={(e) => setCity(e.target.value)}>
           <option value="">Select City</option>
           <option value="Karachi">Karachi</option>
           <option value="Lahore">Lahore</option>
@@ -236,28 +237,16 @@ function Checkout() {
           <option value="Quetta">Quetta</option>
         </select>
 
-        <input
-          type="text"
-          placeholder="Postal Code"
-          value={postalCode}
-          onChange={(e) => setPostalCode(e.target.value)}
-        />
+        <input type="text" placeholder="Postal Code" value={postalCode}
+          onChange={(e) => setPostalCode(e.target.value)} />
 
-        <textarea
-          placeholder="Complete Address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
+        <textarea placeholder="Complete Address" value={address}
+          onChange={(e) => setAddress(e.target.value)} />
 
-        <select
-          value={payment}
-          onChange={(e) => setPayment(e.target.value)}
-        >
+        <select value={payment} onChange={(e) => setPayment(e.target.value)}>
           <option value="Cash On Delivery">Cash On Delivery</option>
           <option value="PayPal">PayPal</option>
-          <option value="Credit / Debit Card">
-            Credit / Debit Card
-          </option>
+          <option value="Credit / Debit Card">Credit / Debit Card</option>
         </select>
       </div>
 
@@ -267,33 +256,61 @@ function Checkout() {
         {cart.length === 0 ? (
           <p>Your cart is empty.</p>
         ) : (
-          cart.map((item) => (
-            <div className="checkout-item" key={item.id}>
-              <img src={item.image} alt={item.name} width="70" />
+          cart.map((item) => {
+            const originalPrice = Number(item.price);
+            const discountedPrice = getItemPrice(item);
+            const coupon = appliedCoupons[item.id];
 
-              <div>
-                <h4>{item.name}</h4>
+            return (
+              <div className="checkout-item" key={item.id}>
+                <img src={item.image} alt={item.name} width="70" />
 
-                <p>
-                  {item.currency || "PKR"} {item.price}
-                </p>
+                <div>
+                  <h4>{item.name}</h4>
 
-                <p>Quantity: {item.quantity}</p>
+                  {coupon ? (
+                    <>
+                      <p>
+                        <s>{currency} {originalPrice.toFixed(2)}</s>
+                      </p>
+                      <p>
+                        <strong>
+                          {currency} {discountedPrice.toFixed(2)}
+                        </strong>
+                      </p>
+                      <p>Coupon: {coupon.code}</p>
+                    </>
+                  ) : (
+                    <p>{currency} {originalPrice.toFixed(2)}</p>
+                  )}
 
-                <p>
-                  Item Total: {currency}{" "}
-                  {(Number(item.price) * item.quantity).toFixed(2)}
-                </p>
+                  <p>Quantity: {item.quantity}</p>
+
+                  <p>
+                    Item Total: {currency}{" "}
+                    {(discountedPrice * item.quantity).toFixed(2)}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         <hr />
 
         <div className="checkout-total">
           <p>
-            Subtotal: {currency} {subtotal.toFixed(2)}
+            Original Subtotal: {currency} {originalSubtotal.toFixed(2)}
+          </p>
+
+          {totalDiscount > 0 && (
+            <p>
+              Coupon Discount: -{currency} {totalDiscount.toFixed(2)}
+            </p>
+          )}
+
+          <p>
+            Discounted Subtotal: {currency} {subtotal.toFixed(2)}
           </p>
 
           <p>
