@@ -10,7 +10,6 @@ const app = express();
 
 const allowedOrigins = [
     "https://tingumingu-tau.vercel.app",
-    "https://tingumingutoys.netlify.app",
     "http://localhost:5173"
 ];
 
