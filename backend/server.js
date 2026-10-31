@@ -1,38 +1,48 @@
+
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 require("dotenv").config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
+// ======================
+// MIDDLEWARE
+// ======================
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "tingumingu",
-  password: "smdbtoys@15",
-  port: 5432,
-});
-
 // ======================
 // DATABASE CONNECTION
 // ======================
 
+const pool = new Pool({
+  user: process.env.DB_USER || "postgres",
+  host: process.env.DB_HOST || "localhost",
+  database: process.env.DB_NAME || "tingumingu",
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT || 5432),
+});
+
 pool.query("SELECT NOW()", (err, result) => {
-
   if (err) {
-
-    console.log("Database connection failed:", err);
-
+    console.error("Database connection failed:", err.message);
   } else {
-
-    console.log("Database connected:", result.rows);
-
+    console.log("Database connected:", result.rows[0].now);
   }
+});
 
+// ======================
+// SERVER STATUS
+// ======================
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "Tingu Mingu Toys API is running",
+  });
 });
 
 // ======================
@@ -40,23 +50,16 @@ pool.query("SELECT NOW()", (err, result) => {
 // ======================
 
 app.get("/products", async (req, res) => {
-
   try {
-
     const result = await pool.query(
       "SELECT * FROM products ORDER BY id ASC"
     );
 
     res.json(result.rows);
-
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("Get products error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 // ======================
@@ -64,9 +67,6 @@ app.get("/products", async (req, res) => {
 // ======================
 
 app.post("/products", async (req, res) => {
-
-  console.log("Received Product:", req.body);
-
   const {
     name,
     price,
@@ -75,35 +75,32 @@ app.post("/products", async (req, res) => {
     description,
   } = req.body;
 
+  if (!name || price === undefined || !image) {
+    return res.status(400).json({
+      error: "Name, price and image are required",
+    });
+  }
+
   try {
-
     const result = await pool.query(
-
       `INSERT INTO products
-      (name, price, image, category, description)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING *`,
-
+       (name, price, image, category, description)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
       [
         name,
         price,
         image,
-        category,
-        description,
+        category || null,
+        description || null,
       ]
-
     );
 
-    res.json(result.rows[0]);
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("Add product error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 // ======================
@@ -111,28 +108,27 @@ app.post("/products", async (req, res) => {
 // ======================
 
 app.delete("/products/:id", async (req, res) => {
-
   const { id } = req.params;
 
   try {
-
-    await pool.query(
-      "DELETE FROM products WHERE id=$1",
+    const result = await pool.query(
+      "DELETE FROM products WHERE id = $1 RETURNING *",
       [id]
     );
 
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: "Product not found",
+      });
+    }
+
     res.json({
-      message: "Product Deleted Successfully",
+      message: "Product deleted successfully",
     });
-
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("Delete product error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 // ======================
@@ -140,11 +136,7 @@ app.delete("/products/:id", async (req, res) => {
 // ======================
 
 app.post("/orders", async (req, res) => {
-
-  console.log("Received Order:", req.body);
-
   const {
-
     customer_name,
     phone,
     email,
@@ -155,35 +147,26 @@ app.post("/orders", async (req, res) => {
     address,
     payment_method,
     total,
-
   } = req.body;
 
   try {
-
     const result = await pool.query(
-
       `INSERT INTO orders
-      (
-        customer_name,
-        phone,
-        email,
-        country,
-        province,
-        city,
-        postal_code,
-        address,
-        payment_method,
-        total
-      )
-
-      VALUES
-
-      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-
-      RETURNING *`,
-
+       (
+         customer_name,
+         phone,
+         email,
+         country,
+         province,
+         city,
+         postal_code,
+         address,
+         payment_method,
+         total
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
       [
-
         customer_name,
         phone,
         email,
@@ -194,23 +177,14 @@ app.post("/orders", async (req, res) => {
         address,
         payment_method,
         total,
-
       ]
-
     );
 
-    res.json(result.rows[0]);
-
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-
-    console.log(error);
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("Place order error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 // ======================
@@ -218,31 +192,33 @@ app.post("/orders", async (req, res) => {
 // ======================
 
 app.get("/orders", async (req, res) => {
-
   try {
-
     const result = await pool.query(
       "SELECT * FROM orders ORDER BY id DESC"
     );
 
     res.json(result.rows);
-
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("Get orders error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 // ======================
-// SERVER
+// START SERVER
 // ======================
 
-app.listen(5000, () => {
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
-  console.log("🚀 Server running on port 5000");
+// ======================
+// GRACEFUL SHUTDOWN
+// ======================
 
+process.on("SIGINT", async () => {
+  console.log("Closing server...");
+  server.close();
+  await pool.end();
+  process.exit(0);
 });

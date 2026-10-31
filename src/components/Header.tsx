@@ -1,11 +1,9 @@
 
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 
 import { auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
-
 import { useCart } from "../context/cartcontext";
 import { useWishlist } from "../context/wishlistcontext";
 import { useSearch } from "../context/SearchContext";
@@ -25,13 +23,11 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
   const { user } = useAuth();
 
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const closeMenu = () => setMenuOpen(false);
 
   const goWishlist = () => {
     if (window.location.pathname !== "/") {
       navigate("/");
+
       setTimeout(() => {
         document.getElementById("wishlist")?.scrollIntoView({
           behavior: "smooth",
@@ -42,7 +38,6 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
         behavior: "smooth",
       });
     }
-    closeMenu();
   };
 
   const handleLogout = async () => {
@@ -50,7 +45,6 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
       await signOut(auth);
       alert("Logged Out Successfully");
       navigate("/");
-      closeMenu();
     } catch {
       alert("Logout Failed");
     }
@@ -62,7 +56,6 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
         <Link
           to="/"
           className="logo"
-          onClick={closeMenu}
           style={{
             textDecoration: "none",
             display: "flex",
@@ -111,11 +104,11 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
             </>
           ) : (
             <>
-              <Link to="/login" onClick={closeMenu}>
+              <Link to="/login">
                 <button className="login-btn">Login</button>
               </Link>
 
-              <Link to="/register" onClick={closeMenu}>
+              <Link to="/register">
                 <button className="login-btn">Register</button>
               </Link>
             </>
@@ -124,24 +117,17 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
           <button className="cart-btn" onClick={openCart}>
             🛒 {cart.length}
           </button>
-
-          <button
-            className="menu-btn"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            ☰
-          </button>
         </div>
       </div>
 
-      <nav className={menuOpen ? "navbar active" : "navbar"}>
-        <Link to="/" onClick={closeMenu}>Home</Link>
-        <Link to="/#products" onClick={closeMenu}>Shop</Link>
-        <Link to="/category/Men" onClick={closeMenu}>Men</Link>
-        <Link to="/category/Women" onClick={closeMenu}>Women</Link>
-        <Link to="/category/Kids" onClick={closeMenu}>Kids</Link>
-        <Link to="/category/Toys" onClick={closeMenu}>Toys</Link>
-        <Link to="/#footer" onClick={closeMenu}>Contact</Link>
+      <nav className="navbar">
+        <Link to="/">Home</Link>
+        <Link to="/#products">Shop</Link>
+        <Link to="/category/Men">Men</Link>
+        <Link to="/category/Women">Women</Link>
+        <Link to="/category/Kids">Kids</Link>
+        <Link to="/category/Toys">Toys</Link>
+        <Link to="/#footer">Contact</Link>
       </nav>
     </header>
   );
