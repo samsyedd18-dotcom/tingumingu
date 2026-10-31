@@ -1,9 +1,9 @@
+
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useCart } from "../context/cartcontext";
 import { useProducts } from "../context/productcontext";
 import { useWishlist } from "../context/wishlistcontext";
-// import { defaultProducts } from "../data/products";
 
 function ProductDetails() {
   const { id } = useParams();
@@ -15,14 +15,25 @@ function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState("");
 
-  const allProducts = [
-    // ...defaultProducts,
-    ...adminProducts,
-  ];
+  const allProducts = [...adminProducts];
 
   const product = allProducts.find(
     (p) => p.id === Number(id)
   );
+
+  const galleryImages = product
+    ? Array.from(
+      new Set([product.image, ...(product.images || [])].filter(Boolean))
+    )
+    : [];
+
+  const stock = Number(product?.stock ?? 0);
+  const outOfStock = stock <= 0;
+
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedImage(product?.image || "");
+  }, [id, product?.image]);
 
   if (!product) {
     return (
@@ -34,21 +45,24 @@ function ProductDetails() {
         }}
       >
         <h2>Product Not Found</h2>
+        <Link to="/">Back to Home</Link>
       </div>
     );
   }
 
-  useEffect(() => {
-    if (product.images && product.images.length > 0) {
-      setSelectedImage(product.images[0]);
-    } else {
-      setSelectedImage(product.image);
+  const handleAddToCart = () => {
+    if (outOfStock) return;
+
+    // Add selected quantity to cart.
+    for (let i = 0; i < quantity; i++) {
+      addToCart(product);
     }
-  }, [product]);
+  };
 
   return (
     <section className="product-details">
 
+      {/* PRODUCT IMAGES */}
       <div className="details-image">
 
         <div className="main-image">
@@ -59,18 +73,47 @@ function ProductDetails() {
         </div>
 
         <div className="thumbnail-images">
-          {product.images?.map((img, index) => (
+          {galleryImages.map((img, index) => (
             <img
               key={index}
               src={img}
-              alt="thumbnail"
+              alt={`${product.name} image ${index + 1}`}
               onClick={() => setSelectedImage(img)}
+              style={{
+                cursor: "pointer",
+                border:
+                  selectedImage === img
+                    ? "2px solid #ff9800"
+                    : "2px solid transparent",
+              }}
             />
           ))}
         </div>
 
+        {/* PRODUCT VIDEO */}
+        {product.video && (
+          <div className="product-video">
+            <h3>🎬 Product Video</h3>
+
+            <video
+              src={product.video}
+              controls
+              playsInline
+              preload="metadata"
+              style={{
+                width: "100%",
+                maxWidth: "600px",
+                borderRadius: "12px",
+              }}
+            >
+              Your browser does not support video playback.
+            </video>
+          </div>
+        )}
+
       </div>
 
+      {/* PRODUCT INFORMATION */}
       <div className="details-info">
 
         <h1>{product.name}</h1>
@@ -80,27 +123,42 @@ function ProductDetails() {
         </p>
 
         <h2>
-          {product.currency} {product.price}
+          {product.currency || "PKR"} {product.price}
         </h2>
 
         <p>
           {product.description || "Premium quality product."}
         </p>
 
+        {/* STOCK */}
+        <div className="product-stock">
+          {outOfStock ? (
+            <p style={{ color: "red", fontWeight: "bold" }}>
+              ❌ Out of Stock
+            </p>
+          ) : (
+            <p style={{ color: "green" }}>
+              ✅ Available Stock: {stock}
+            </p>
+          )}
+        </div>
+
+        {/* TOTAL PRICE */}
         <div className="total-price">
           <h3>
-            Total: {product.currency}{" "}
-            {Number(product.price) * quantity}
+            Total: {product.currency || "PKR"}{" "}
+            {(Number(product.price) * quantity).toLocaleString()}
           </h3>
         </div>
 
+        {/* QUANTITY */}
         <div className="quantity">
 
           <button
             onClick={() =>
-              quantity > 1 &&
-              setQuantity(quantity - 1)
+              setQuantity((previous) => Math.max(1, previous - 1))
             }
+            disabled={quantity <= 1 || outOfStock}
           >
             -
           </button>
@@ -109,21 +167,27 @@ function ProductDetails() {
 
           <button
             onClick={() =>
-              setQuantity(quantity + 1)
+              setQuantity((previous) =>
+                Math.min(stock, previous + 1)
+              )
             }
+            disabled={quantity >= stock || outOfStock}
           >
             +
           </button>
 
         </div>
 
+        {/* ADD TO CART */}
         <button
           className="buy-btn"
-          onClick={() => addToCart(product)}
+          onClick={handleAddToCart}
+          disabled={outOfStock}
         >
-          🛒 Add To Cart
+          {outOfStock ? "Out of Stock" : "🛒 Add To Cart"}
         </button>
 
+        {/* WISHLIST */}
         <div className="details-buttons">
 
           <button
@@ -137,6 +201,7 @@ function ProductDetails() {
 
         </div>
 
+        {/* DELIVERY */}
         <div className="delivery-box">
 
           <h3>🚚 Delivery Information</h3>
@@ -149,28 +214,23 @@ function ProductDetails() {
 
         </div>
 
+        {/* SPECIFICATIONS */}
         <div className="specifications">
 
           <h3>📋 Product Specifications</h3>
 
           <ul>
-
             <li>Premium Quality Material</li>
-
             <li>Original Brand Product</li>
-
             <li>Available in Multiple Sizes</li>
-
             <li>Lightweight & Comfortable</li>
-
             <li>High Durability</li>
-
             <li>Secure Packaging</li>
-
           </ul>
 
         </div>
 
+        {/* REVIEWS */}
         <div className="reviews">
 
           <h3>⭐ Customer Reviews</h3>
@@ -192,6 +252,7 @@ function ProductDetails() {
 
         </div>
 
+        {/* RELATED PRODUCTS */}
         <div className="related-products">
 
           <h3>🔥 Related Products</h3>
@@ -222,7 +283,7 @@ function ProductDetails() {
                     <h4>{item.name}</h4>
 
                     <p>
-                      {item.currency} {item.price}
+                      {item.currency || "PKR"} {item.price}
                     </p>
 
                   </div>

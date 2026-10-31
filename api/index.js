@@ -35,7 +35,7 @@ const errorResponse = (res, error, message) => {
     res.status(500).json({ error: message });
 };
 
-// ================= ADMIN SESSION AUTHENTICATION =================
+// ================= ADMIN AUTHENTICATION =================
 
 const signSession = (payload) => {
     const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -53,7 +53,6 @@ const verifySession = (session) => {
 
     try {
         const [body, signature] = session.split(".");
-
         if (!body || !signature) return false;
 
         const expected = crypto
@@ -66,9 +65,7 @@ const verifySession = (session) => {
         if (
             received.length !== expected.length ||
             !crypto.timingSafeEqual(received, expected)
-        ) {
-            return false;
-        }
+        ) return false;
 
         const data = JSON.parse(
             Buffer.from(body, "base64url").toString("utf8")
@@ -109,7 +106,7 @@ const verifyAdmin = (req, res, next) => {
     next();
 };
 
-// ADMIN LOGIN
+// LOGIN
 router.post("/admin/login", (req, res) => {
     const { password } = req.body || {};
 
@@ -121,7 +118,7 @@ router.post("/admin/login", (req, res) => {
 
     if (
         typeof password !== "string" ||
-        password.length === 0 ||
+        !password ||
         password !== process.env.ADMIN_PASSWORD
     ) {
         return res.status(401).json({
@@ -142,12 +139,10 @@ router.post("/admin/login", (req, res) => {
         maxAge: SESSION_DURATION
     });
 
-    res.json({
-        message: "Admin login successful"
-    });
+    res.json({ message: "Admin login successful" });
 });
 
-// ADMIN LOGOUT
+// LOGOUT
 router.post("/admin/logout", (req, res) => {
     res.clearCookie(COOKIE_NAME, {
         httpOnly: true,
@@ -156,17 +151,15 @@ router.post("/admin/logout", (req, res) => {
         path: "/"
     });
 
-    res.json({
-        message: "Admin logged out"
-    });
+    res.json({ message: "Admin logged out" });
 });
 
-// CHECK ADMIN SESSION
+// CHECK SESSION
 router.get("/admin/check", verifyAdmin, (req, res) => {
     res.json({ authenticated: true });
 });
 
-// PUBLIC ROUTES; ALL OTHER ROUTES REQUIRE ADMIN SESSION
+// PUBLIC ROUTES
 router.use((req, res, next) => {
     const publicRoutes = [
         ["GET", "/"],
@@ -197,43 +190,91 @@ router.get("/", (req, res) => {
 
 // ================= PRODUCTS =================
 
+// GET PRODUCTS
 router.get("/products", async (req, res) => {
     try {
         const result = await pool.query(
             "SELECT * FROM products ORDER BY id ASC"
         );
+
         res.json(result.rows);
     } catch (error) {
         errorResponse(res, error, "Products fetch failed");
     }
 });
 
+// ADD PRODUCT
 router.post("/products", async (req, res) => {
     const {
-        name, price, image, category,
-        description, currency = "PKR", stock = 0,
-    } = req.body;
+        name,
+        price,
+        image,
+        images = [],
+        video = "",
+        category,
+        description = "",
+        currency = "PKR",
+        stock = 0,
+    } = req.body || {};
 
-    if (!name || !price || !image || !category) {
+    if (
+        typeof name !== "string" ||
+        !name.trim() ||
+        price === undefined ||
+        !image ||
+        !category
+    ) {
         return res.status(400).json({
             error: "Required fields are missing"
         });
     }
 
     if (!Number.isFinite(Number(price)) || Number(price) <= 0) {
-        return res.status(400).json({ error: "Invalid product price" });
+        return res.status(400).json({
+            error: "Invalid product price"
+        });
     }
 
     if (!Number.isInteger(Number(stock)) || Number(stock) < 0) {
-        return res.status(400).json({ error: "Invalid stock quantity" });
+        return res.status(400).json({
+            error: "Invalid stock quantity"
+        });
+    }
+
+    if (
+        !Array.isArray(images) ||
+        images.length > 2 ||
+        images.some(url => typeof url !== "string")
+    ) {
+        return res.status(400).json({
+            error: "Maximum 2 additional images allowed"
+        });
+    }
+
+    if (typeof video !== "string") {
+        return res.status(400).json({
+            error: "Invalid video URL"
+        });
     }
 
     try {
         const result = await pool.query(
             `INSERT INTO products
-            (name, price, image, category, description, currency, stock)
-            VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-            [name, price, image, category, description || "", currency, stock]
+            (name, price, image, images, video, category,
+             description, currency, stock)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            RETURNING *`,
+            [
+                name.trim(),
+                Number(price),
+                image,
+                JSON.stringify(images),
+                video,
+                category,
+                description,
+                currency,
+                Number(stock)
+            ]
         );
 
         res.status(201).json(result.rows[0]);
@@ -242,57 +283,97 @@ router.post("/products", async (req, res) => {
     }
 });
 
+// UPDATE PRODUCT
 router.patch("/products/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid product ID" });
+        return res.status(400).json({
+            error: "Invalid product ID"
+        });
     }
 
     const {
-        name, price, image, category,
-        description, currency, stock
-    } = req.body;
+        name,
+        price,
+        image,
+        images,
+        video,
+        category,
+        description,
+        currency,
+        stock
+    } = req.body || {};
 
     if (
         price !== undefined &&
         (!Number.isFinite(Number(price)) || Number(price) <= 0)
     ) {
-        return res.status(400).json({ error: "Invalid price" });
+        return res.status(400).json({
+            error: "Invalid price"
+        });
     }
 
     if (
         stock !== undefined &&
         (!Number.isInteger(Number(stock)) || Number(stock) < 0)
     ) {
-        return res.status(400).json({ error: "Invalid stock" });
+        return res.status(400).json({
+            error: "Invalid stock"
+        });
+    }
+
+    if (
+        images !== undefined &&
+        (
+            !Array.isArray(images) ||
+            images.length > 2 ||
+            images.some(url => typeof url !== "string")
+        )
+    ) {
+        return res.status(400).json({
+            error: "Maximum 2 additional images allowed"
+        });
+    }
+
+    if (video !== undefined && typeof video !== "string") {
+        return res.status(400).json({
+            error: "Invalid video URL"
+        });
     }
 
     try {
         const result = await pool.query(
             `UPDATE products SET
-            name = COALESCE($1, name),
-            price = COALESCE($2, price),
-            image = COALESCE($3, image),
-            category = COALESCE($4, category),
-            description = COALESCE($5, description),
-            currency = COALESCE($6, currency),
-            stock = COALESCE($7, stock)
-            WHERE id = $8 RETURNING *`,
+                name = COALESCE($1, name),
+                price = COALESCE($2, price),
+                image = COALESCE($3, image),
+                images = COALESCE($4::jsonb, images),
+                video = COALESCE($5, video),
+                category = COALESCE($6, category),
+                description = COALESCE($7, description),
+                currency = COALESCE($8, currency),
+                stock = COALESCE($9, stock)
+            WHERE id = $10
+            RETURNING *`,
             [
                 name ?? null,
                 price ?? null,
                 image ?? null,
+                images !== undefined ? JSON.stringify(images) : null,
+                video ?? null,
                 category ?? null,
                 description ?? null,
                 currency ?? null,
                 stock ?? null,
-                id,
+                id
             ]
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Product not found" });
+            return res.status(404).json({
+                error: "Product not found"
+            });
         }
 
         res.json(result.rows[0]);
@@ -301,11 +382,14 @@ router.patch("/products/:id", async (req, res) => {
     }
 });
 
+// DELETE PRODUCT
 router.delete("/products/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid product ID" });
+        return res.status(400).json({
+            error: "Invalid product ID"
+        });
     }
 
     try {
@@ -315,7 +399,9 @@ router.delete("/products/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Product not found" });
+            return res.status(404).json({
+                error: "Product not found"
+            });
         }
 
         res.json({ message: "Product deleted successfully" });
@@ -326,42 +412,190 @@ router.delete("/products/:id", async (req, res) => {
 
 // ================= ORDERS =================
 
-// PUBLIC CUSTOMER CHECKOUT
+// CUSTOMER CHECKOUT
 router.post("/orders", async (req, res) => {
     const {
-        customer_name, phone, email, country, province,
-        city, postal_code, address, payment_method, total,
-    } = req.body;
+        customer_name,
+        phone,
+        email,
+        country,
+        province,
+        city,
+        postal_code,
+        address,
+        payment_method,
+        items,
+    } = req.body || {};
 
-    if (!customer_name || !phone || !address || !payment_method) {
+    if (
+        typeof customer_name !== "string" ||
+        !customer_name.trim() ||
+        typeof phone !== "string" ||
+        !phone.trim() ||
+        typeof email !== "string" ||
+        !email.trim() ||
+        typeof address !== "string" ||
+        !address.trim() ||
+        !payment_method ||
+        !Array.isArray(items) ||
+        items.length === 0
+    ) {
         return res.status(400).json({
-            error: "Required order fields are missing"
+            error: "Required order details are missing"
         });
     }
 
-    if (!Number.isFinite(Number(total)) || Number(total) <= 0) {
-        return res.status(400).json({ error: "Invalid order total" });
+    const quantities = new Map();
+
+    for (const item of items) {
+        const productId = getId(item.product_id);
+        const quantity = Number(item.quantity);
+
+        if (
+            !productId ||
+            !Number.isInteger(quantity) ||
+            quantity <= 0
+        ) {
+            return res.status(400).json({
+                error: "Invalid product or quantity"
+            });
+        }
+
+        quantities.set(
+            productId,
+            (quantities.get(productId) || 0) + quantity
+        );
     }
 
+    const client = await pool.connect();
+
     try {
-        const result = await pool.query(
-            `INSERT INTO orders
-            (customer_name, phone, email, country, province, city,
-            postal_code, address, payment_method, total)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-            [
+        await client.query("BEGIN");
+
+        let subtotal = 0;
+        let currency = null;
+        const orderItems = [];
+
+        for (const [productId, quantity] of quantities) {
+            const result = await client.query(
+                `SELECT id, name, price, image, currency, stock
+                 FROM products
+                 WHERE id = $1
+                 FOR UPDATE`,
+                [productId]
+            );
+
+            if (!result.rowCount) {
+                throw new Error(`Product ${productId} not found`);
+            }
+
+            const product = result.rows[0];
+            const price = Number(product.price);
+            const availableStock = Number(product.stock);
+
+            if (!Number.isFinite(price) || price <= 0) {
+                throw new Error(`Invalid price for ${product.name}`);
+            }
+
+            if (availableStock < quantity) {
+                throw new Error(
+                    `Insufficient stock for ${product.name}. Available: ${availableStock}`
+                );
+            }
+
+            const productCurrency = product.currency || "PKR";
+
+            if (currency && currency !== productCurrency) {
+                throw new Error(
+                    "Please order products in the same currency"
+                );
+            }
+
+            currency = productCurrency;
+            subtotal += price * quantity;
+
+            orderItems.push({
+                product_id: product.id,
+                name: product.name,
+                price,
+                currency: productCurrency,
+                image: product.image,
+                quantity
+            });
+
+            await client.query(
+                `UPDATE products
+                 SET stock = stock - $1
+                 WHERE id = $2`,
+                [quantity, productId]
+            );
+        }
+
+        const settingsResult = await client.query(
+            `SELECT setting_value
+             FROM store_settings
+             WHERE setting_key = 'delivery_fee'
+             LIMIT 1`
+        );
+
+        const deliveryFee = Number(
+            settingsResult.rows[0]?.setting_value ?? 0
+        );
+
+        if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+            throw new Error("Invalid store delivery fee");
+        }
+
+        const total = subtotal + deliveryFee;
+
+        const orderResult = await client.query(
+            `INSERT INTO orders (
                 customer_name, phone, email, country, province,
-                city, postal_code, address, payment_method, total,
+                city, postal_code, address, payment_method,
+                total, items, delivery_fee
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            RETURNING *`,
+            [
+                customer_name.trim(),
+                phone.trim(),
+                email.trim(),
+                country || "",
+                province || "",
+                city || "",
+                postal_code || "",
+                address.trim(),
+                payment_method,
+                total,
+                JSON.stringify(orderItems),
+                deliveryFee
             ]
         );
 
-        res.status(201).json(result.rows[0]);
+        await client.query("COMMIT");
+
+        res.status(201).json({
+            message: "Order placed successfully",
+            order: orderResult.rows[0],
+            subtotal,
+            delivery_fee: deliveryFee,
+            total,
+            currency
+        });
+
     } catch (error) {
-        errorResponse(res, error, "Order failed");
+        await client.query("ROLLBACK");
+        console.error("Order Error:", error);
+
+        res.status(400).json({
+            error: error.message || "Order failed"
+        });
+    } finally {
+        client.release();
     }
 });
 
-// ADMIN: GET ORDERS
+// GET ORDERS
 router.get("/orders", async (req, res) => {
     try {
         const result = await pool.query(
@@ -374,13 +608,17 @@ router.get("/orders", async (req, res) => {
     }
 });
 
-// ADMIN: UPDATE ORDER STATUS
+// UPDATE ORDER STATUS
 router.patch("/orders/:id/status", async (req, res) => {
     const id = getId(req.params.id);
     const { status } = req.body;
 
     const allowedStatuses = [
-        "Pending", "Processing", "Shipped", "Delivered", "Cancelled",
+        "Pending",
+        "Processing",
+        "Shipped",
+        "Delivered",
+        "Cancelled",
     ];
 
     if (!id) {
@@ -407,7 +645,7 @@ router.patch("/orders/:id/status", async (req, res) => {
     }
 });
 
-// ADMIN: DELETE ORDER
+// DELETE ORDER
 router.delete("/orders/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -446,7 +684,11 @@ router.get("/categories", async (req, res) => {
 });
 
 router.post("/categories", async (req, res) => {
-    const { name, description = "", image = "" } = req.body;
+    const {
+        name,
+        description = "",
+        image = ""
+    } = req.body || {};
 
     if (!name?.trim()) {
         return res.status(400).json({
@@ -457,7 +699,8 @@ router.post("/categories", async (req, res) => {
     try {
         const result = await pool.query(
             `INSERT INTO categories (name, description, image)
-            VALUES ($1,$2,$3) RETURNING *`,
+             VALUES ($1,$2,$3)
+             RETURNING *`,
             [name.trim(), description, image]
         );
 
@@ -480,20 +723,28 @@ router.patch("/categories/:id", async (req, res) => {
         return res.status(400).json({ error: "Invalid category ID" });
     }
 
-    const { name, description, image } = req.body;
+    const { name, description, image } = req.body || {};
 
     try {
         const result = await pool.query(
             `UPDATE categories SET
-            name = COALESCE($1, name),
-            description = COALESCE($2, description),
-            image = COALESCE($3, image)
-            WHERE id = $4 RETURNING *`,
-            [name ?? null, description ?? null, image ?? null, id]
+                name = COALESCE($1, name),
+                description = COALESCE($2, description),
+                image = COALESCE($3, image)
+             WHERE id = $4
+             RETURNING *`,
+            [
+                name ?? null,
+                description ?? null,
+                image ?? null,
+                id
+            ]
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Category not found" });
+            return res.status(404).json({
+                error: "Category not found"
+            });
         }
 
         res.json(result.rows[0]);
@@ -516,7 +767,9 @@ router.delete("/categories/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Category not found" });
+            return res.status(404).json({
+                error: "Category not found"
+            });
         }
 
         res.json({ message: "Category deleted successfully" });
@@ -527,15 +780,15 @@ router.delete("/categories/:id", async (req, res) => {
 
 // ================= REVIEWS =================
 
-// PUBLIC: APPROVED REVIEWS ONLY
+// PUBLIC APPROVED REVIEWS
 router.get("/reviews", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT reviews.*, products.name AS product_name
-            FROM reviews
-            LEFT JOIN products ON products.id = reviews.product_id
-            WHERE reviews.status = 'Approved'
-            ORDER BY reviews.id DESC`
+             FROM reviews
+             LEFT JOIN products ON products.id = reviews.product_id
+             WHERE reviews.status = 'Approved'
+             ORDER BY reviews.id DESC`
         );
 
         res.json(result.rows);
@@ -544,11 +797,14 @@ router.get("/reviews", async (req, res) => {
     }
 });
 
-// PUBLIC: CUSTOMER SUBMITS REVIEW
+// CUSTOMER REVIEW
 router.post("/reviews", async (req, res) => {
     const {
-        product_id, customer_name, rating, comment = ""
-    } = req.body;
+        product_id,
+        customer_name,
+        rating,
+        comment = ""
+    } = req.body || {};
 
     if (!getId(product_id) || !customer_name?.trim()) {
         return res.status(400).json({
@@ -568,8 +824,10 @@ router.post("/reviews", async (req, res) => {
 
     try {
         const result = await pool.query(
-            `INSERT INTO reviews (product_id, customer_name, rating, comment)
-            VALUES ($1,$2,$3,$4) RETURNING *`,
+            `INSERT INTO reviews
+             (product_id, customer_name, rating, comment)
+             VALUES ($1,$2,$3,$4)
+             RETURNING *`,
             [product_id, customer_name.trim(), rating, comment]
         );
 
@@ -579,14 +837,14 @@ router.post("/reviews", async (req, res) => {
     }
 });
 
-// ADMIN: ALL REVIEWS
+// ADMIN REVIEWS
 router.get("/admin/reviews", async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT reviews.*, products.name AS product_name
-            FROM reviews
-            LEFT JOIN products ON products.id = reviews.product_id
-            ORDER BY reviews.id DESC`
+             FROM reviews
+             LEFT JOIN products ON products.id = reviews.product_id
+             ORDER BY reviews.id DESC`
         );
 
         res.json(result.rows);
@@ -595,10 +853,10 @@ router.get("/admin/reviews", async (req, res) => {
     }
 });
 
-// ADMIN: UPDATE REVIEW STATUS
+// REVIEW STATUS
 router.patch("/reviews/:id/status", async (req, res) => {
     const id = getId(req.params.id);
-    const { status } = req.body;
+    const { status } = req.body || {};
 
     if (!id) {
         return res.status(400).json({ error: "Invalid review ID" });
@@ -624,7 +882,7 @@ router.patch("/reviews/:id/status", async (req, res) => {
     }
 });
 
-// ADMIN: DELETE REVIEW
+// DELETE REVIEW
 router.delete("/reviews/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -650,7 +908,7 @@ router.delete("/reviews/:id", async (req, res) => {
 
 // ================= COUPONS =================
 
-// PUBLIC: ACTIVE COUPONS
+// PUBLIC ACTIVE COUPONS
 router.get("/coupons", async (req, res) => {
     try {
         const result = await pool.query(
@@ -663,7 +921,7 @@ router.get("/coupons", async (req, res) => {
     }
 });
 
-// ADMIN: ALL COUPONS
+// ADMIN ALL COUPONS
 router.get("/admin/coupons", async (req, res) => {
     try {
         const result = await pool.query(
@@ -676,25 +934,38 @@ router.get("/admin/coupons", async (req, res) => {
     }
 });
 
-// ADMIN: ADD COUPON
+// ADD COUPON
 router.post("/coupons", async (req, res) => {
     const {
-        code, discount_type, discount_value,
-        expiry_date = null, usage_limit = null,
-    } = req.body;
+        code,
+        discount_type,
+        discount_value,
+        expiry_date = null,
+        usage_limit = null,
+    } = req.body || {};
 
-    if (!code?.trim() || !["percentage", "fixed"].includes(discount_type)) {
-        return res.status(400).json({ error: "Invalid coupon details" });
+    if (
+        !code?.trim() ||
+        !["percentage", "fixed"].includes(discount_type)
+    ) {
+        return res.status(400).json({
+            error: "Invalid coupon details"
+        });
     }
 
     if (
         !Number.isFinite(Number(discount_value)) ||
         Number(discount_value) <= 0
     ) {
-        return res.status(400).json({ error: "Invalid discount value" });
+        return res.status(400).json({
+            error: "Invalid discount value"
+        });
     }
 
-    if (discount_type === "percentage" && Number(discount_value) > 100) {
+    if (
+        discount_type === "percentage" &&
+        Number(discount_value) > 100
+    ) {
         return res.status(400).json({
             error: "Percentage cannot exceed 100"
         });
@@ -703,14 +974,15 @@ router.post("/coupons", async (req, res) => {
     try {
         const result = await pool.query(
             `INSERT INTO coupons
-            (code, discount_type, discount_value, expiry_date, usage_limit)
-            VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+             (code, discount_type, discount_value, expiry_date, usage_limit)
+             VALUES ($1,$2,$3,$4,$5)
+             RETURNING *`,
             [
                 code.trim().toUpperCase(),
                 discount_type,
                 discount_value,
                 expiry_date,
-                usage_limit,
+                usage_limit
             ]
         );
 
@@ -726,7 +998,7 @@ router.post("/coupons", async (req, res) => {
     }
 });
 
-// ADMIN: UPDATE COUPON
+// UPDATE COUPON
 router.patch("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -734,16 +1006,22 @@ router.patch("/coupons/:id", async (req, res) => {
         return res.status(400).json({ error: "Invalid coupon ID" });
     }
 
-    const { active, discount_value, expiry_date, usage_limit } = req.body;
+    const {
+        active,
+        discount_value,
+        expiry_date,
+        usage_limit
+    } = req.body || {};
 
     try {
         const result = await pool.query(
             `UPDATE coupons SET
-            active = COALESCE($1, active),
-            discount_value = COALESCE($2, discount_value),
-            expiry_date = COALESCE($3, expiry_date),
-            usage_limit = COALESCE($4, usage_limit)
-            WHERE id = $5 RETURNING *`,
+                active = COALESCE($1, active),
+                discount_value = COALESCE($2, discount_value),
+                expiry_date = COALESCE($3, expiry_date),
+                usage_limit = COALESCE($4, usage_limit)
+             WHERE id = $5
+             RETURNING *`,
             [
                 active ?? null,
                 discount_value ?? null,
@@ -763,7 +1041,7 @@ router.patch("/coupons/:id", async (req, res) => {
     }
 });
 
-// ADMIN: DELETE COUPON
+// DELETE COUPON
 router.delete("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -793,19 +1071,25 @@ router.get("/analytics", async (req, res) => {
     try {
         const [summary, topProducts, lowStock] = await Promise.all([
             pool.query(`
-                SELECT COUNT(*) AS total_orders,
-                COALESCE(SUM(total), 0) AS total_revenue
-                FROM orders WHERE status <> 'Cancelled'
+                SELECT
+                    COUNT(*) AS total_orders,
+                    COALESCE(SUM(total), 0) AS total_revenue
+                FROM orders
+                WHERE status <> 'Cancelled'
             `),
 
             pool.query(`
                 SELECT id, name, price, sales_count, stock
-                FROM products ORDER BY sales_count DESC LIMIT 10
+                FROM products
+                ORDER BY sales_count DESC
+                LIMIT 10
             `),
 
             pool.query(`
-                SELECT id, name, stock FROM products
-                WHERE stock <= 5 ORDER BY stock ASC
+                SELECT id, name, stock
+                FROM products
+                WHERE stock <= 5
+                ORDER BY stock ASC
             `),
         ]);
 
@@ -819,9 +1103,9 @@ router.get("/analytics", async (req, res) => {
     }
 });
 
-// ================= STORE SETTINGS =================
+// ================= SETTINGS =================
 
-// PUBLIC: STOREFRONT SETTINGS
+// PUBLIC SETTINGS
 router.get("/settings", async (req, res) => {
     try {
         const result = await pool.query(
@@ -840,7 +1124,7 @@ router.get("/settings", async (req, res) => {
     }
 });
 
-// ADMIN: UPDATE SETTINGS
+// SAVE SETTINGS
 router.put("/settings", async (req, res) => {
     const entries = Object.entries(req.body || {});
 
@@ -857,10 +1141,11 @@ router.put("/settings", async (req, res) => {
 
         for (const [key, value] of entries) {
             await client.query(
-                `INSERT INTO store_settings (setting_key, setting_value)
-                VALUES ($1,$2)
-                ON CONFLICT (setting_key)
-                DO UPDATE SET setting_value = EXCLUDED.setting_value`,
+                `INSERT INTO store_settings
+                 (setting_key, setting_value)
+                 VALUES ($1,$2)
+                 ON CONFLICT (setting_key)
+                 DO UPDATE SET setting_value = EXCLUDED.setting_value`,
                 [key, String(value)]
             );
         }
@@ -876,7 +1161,7 @@ router.put("/settings", async (req, res) => {
     }
 });
 
-// ================= ROUTER MOUNT =================
+// ================= MOUNT ROUTER =================
 
 app.use("/api", router);
 app.use("/", router);

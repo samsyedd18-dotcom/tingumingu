@@ -17,8 +17,10 @@ export interface Product {
   category?: string;
   image: string;
   images?: string[];
+  video?: string;
   rating?: string;
   description?: string;
+  stock?: number;
 }
 
 interface ProductContextType {
@@ -49,7 +51,8 @@ export function ProductProvider({
         throw new Error("Products fetch failed");
       }
 
-      const data = await response.json();
+      const data: Product[] = await response.json();
+
       setProducts(data);
     } catch (error) {
       console.error("Products load error:", error);
@@ -67,7 +70,13 @@ export function ProductProvider({
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(product),
+      body: JSON.stringify({
+        ...product,
+        images: product.images || [],
+        video: product.video || "",
+        description: product.description || "",
+        stock: product.stock ?? 0,
+      }),
     });
 
     const data = await response.json();

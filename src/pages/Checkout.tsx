@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "../context/cartcontext";
 
 function Checkout() {
-  const { cart } = useCart();
+  const { cart, clearCart } = useCart();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -16,19 +16,68 @@ function Checkout() {
   const [payment, setPayment] = useState("Cash On Delivery");
   const [loading, setLoading] = useState(false);
 
-  const total = cart.reduce((sum: number, item: any) => {
-    return sum + Number(item.price);
-  }, 0);
-
-  const currency = cart.length > 0 ? cart[0].currency : "PKR";
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   const API_URL = import.meta.env.DEV
     ? "http://localhost:5000/api"
     : "/api";
 
+  // LOAD DELIVERY FEE
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await fetch(`${API_URL}/settings`);
+
+        if (!response.ok) {
+          throw new Error("Settings could not be loaded");
+        }
+
+        const settings = await response.json();
+
+        const fee = Number(settings.delivery_fee ?? 0);
+
+        setDeliveryFee(
+          Number.isFinite(fee) && fee >= 0 ? fee : 0
+        );
+      } catch (error) {
+        console.error("Settings Error:", error);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // CALCULATE SUBTOTAL
+  const subtotal = cart.reduce((sum, item) => {
+    return sum + Number(item.price) * item.quantity;
+  }, 0);
+
+  const currency =
+    cart.length > 0 ? cart[0].currency || "PKR" : "PKR";
+
+  const hasMixedCurrencies = cart.some(
+    (item) => (item.currency || "PKR") !== currency
+  );
+
+  const total = subtotal + deliveryFee;
+
+  // PLACE ORDER
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
       alert("Your cart is empty!");
+      return;
+    }
+
+    if (hasMixedCurrencies) {
+      alert("Please order products in the same currency.");
+      return;
+    }
+
+    if (settingsLoading) {
+      alert("Please wait while checkout settings load.");
       return;
     }
 
@@ -49,6 +98,11 @@ function Checkout() {
     try {
       setLoading(true);
 
+      const orderItems = cart.map((item) => ({
+        product_id: item.id,
+        quantity: item.quantity,
+      }));
+
       const response = await fetch(`${API_URL}/orders`, {
         method: "POST",
         headers: {
@@ -64,20 +118,20 @@ function Checkout() {
           postal_code: postalCode.trim(),
           address: address.trim(),
           payment_method: payment,
-          total,
-          currency,
+          items: orderItems,
         }),
       });
 
-      const contentType = response.headers.get("content-type") || "";
+      const contentType =
+        response.headers.get("content-type") || "";
 
       if (!contentType.includes("application/json")) {
         const errorText = await response.text();
 
-        console.error("Non-JSON server response:", errorText);
+        console.error("Server Response:", errorText);
 
         throw new Error(
-          `Server returned an invalid response. Status: ${response.status}`
+          `Invalid server response. Status: ${response.status}`
         );
       }
 
@@ -87,8 +141,15 @@ function Checkout() {
         throw new Error(data.error || "Failed to place order");
       }
 
-      alert("🎉 Order Placed Successfully!");
+      alert(
+        `🎉 Order Placed Successfully!\nOrder Total: ${data.total ?? total
+        } ${currency}`
+      );
 
+      // CLEAR CART AFTER SUCCESSFUL ORDER
+      clearCart();
+
+      // RESET FORM
       setName("");
       setPhone("");
       setEmail("");
@@ -194,9 +255,13 @@ function Checkout() {
           value={payment}
           onChange={(e) => setPayment(e.target.value)}
         >
-          <option value="Cash On Delivery">Cash On Delivery</option>
+          <option value="Cash On Delivery">
+            Cash On Delivery
+          </option>
           <option value="PayPal">PayPal</option>
-          <option value="Credit / Debit Card">Credit / Debit Card</option>
+          <option value="Credit / Debit Card">
+            Credit / Debit Card
+          </option>
         </select>
       </div>
 
@@ -206,7 +271,7 @@ function Checkout() {
         {cart.length === 0 ? (
           <p>Your cart is empty.</p>
         ) : (
-          cart.map((item: any) => (
+          cart.map((item) => (
             <div className="checkout-item" key={item.id}>
               <img
                 src={item.image}
@@ -216,8 +281,18 @@ function Checkout() {
 
               <div>
                 <h4>{item.name}</h4>
+
                 <p>
-                  {item.currency} {item.price}
+                  {item.currency || "PKR"} {item.price}
+                </p>
+
+                <p>Quantity: {item.quantity}</p>
+
+                <p>
+                  Item Total: {currency}{" "}
+                  {(
+                    Number(item.price) * item.quantity
+                  ).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -227,6 +302,17 @@ function Checkout() {
         <hr />
 
         <div className="checkout-total">
+          <p>
+            Subtotal: {currency} {subtotal.toFixed(2)}
+          </p>
+
+          <p>
+            Delivery Fee: {currency}{" "}
+            {deliveryFee.toFixed(2)}
+          </p>
+
+          <hr />
+
           <h3>
             Total: {currency} {total.toFixed(2)}
           </h3>
@@ -235,9 +321,18 @@ function Checkout() {
         <button
           className="place-order"
           onClick={handlePlaceOrder}
-          disabled={loading || cart.length === 0}
+          disabled={
+            loading ||
+            cart.length === 0 ||
+            settingsLoading ||
+            hasMixedCurrencies
+          }
         >
-          {loading ? "Placing Order..." : "✅ Place Order"}
+          {loading
+            ? "Placing Order..."
+            : settingsLoading
+              ? "Loading Checkout..."
+              : "✅ Place Order"}
         </button>
       </div>
     </section>

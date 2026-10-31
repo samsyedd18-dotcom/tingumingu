@@ -1,76 +1,85 @@
-import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { Link, useParams } from "react-router-dom";
+import { useCart } from "../context/cartcontext";
+import { useProducts } from "../context/productcontext";
+import { useSearch } from "../context/SearchContext";
 
-function Register() {
+function Products() {
+  const { addToCart } = useCart();
+  const { products: adminProducts } = useProducts();
+  const { category } = useParams();
+  const { search } = useSearch();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const filteredProducts = adminProducts.filter((product) => {
+    const matchesCategory = category
+      ? product.category?.toLowerCase() === category.toLowerCase()
+      : true;
 
-  const handleRegister = async () => {
+    const searchTerm = search.trim().toLowerCase();
 
-    if (!email || !password) {
-      alert("Please fill all fields");
-      return;
-    }
+    const matchesSearch = searchTerm
+      ? product.name.toLowerCase().includes(searchTerm) ||
+      product.category?.toLowerCase().includes(searchTerm) ||
+      product.description?.toLowerCase().includes(searchTerm)
+      : true;
 
-    try {
-
-      await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      alert("Account Created Successfully ✅");
-
-      setEmail("");
-      setPassword("");
-
-    } catch (error: any) {
-
-      alert(error.message);
-
-    }
-
-  };
+    return matchesCategory && matchesSearch;
+  });
 
   return (
+    <section className="products" id="products">
+      <h2>
+        {search.trim()
+          ? `Search Results for "${search}"`
+          : category
+            ? `${category} Products`
+            : "All Products"}
+      </h2>
 
-    <section className="login-page">
+      {filteredProducts.length === 0 ? (
+        <p>No products found.</p>
+      ) : (
+        <div className="product-grid">
+          {filteredProducts.map((product) => {
+            const stock = Number(product.stock ?? 0);
+            const outOfStock = stock <= 0;
 
-      <div className="login-box">
+            return (
+              <div className="product-card" key={product.id}>
+                <Link
+                  to={`/product/${product.id}`}
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
+                >
+                  <img src={product.image} alt={product.name} />
 
-        <h2>Create Account</h2>
+                  <h3>{product.name}</h3>
 
-        <p>
-          Register your Tingu Mingu account
-        </p>
+                  <h3>
+                    {product.currency || "PKR"} {product.price}
+                  </h3>
+                </Link>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e)=>setEmail(e.target.value)}
-        />
+                <p>
+                  {outOfStock
+                    ? "Out of Stock"
+                    : `Stock: ${stock}`}
+                </p>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e)=>setPassword(e.target.value)}
-        />
-
-        <button onClick={handleRegister}>
-          Register
-        </button>
-
-      </div>
-
+                <button
+                  onClick={() => addToCart(product)}
+                  disabled={outOfStock}
+                >
+                  {outOfStock ? "Out of Stock" : "Add To Cart"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
-
   );
-
 }
 
-export default Register;
+export default Products;

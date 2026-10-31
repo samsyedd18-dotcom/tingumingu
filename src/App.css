@@ -2102,3 +2102,123 @@ footer p {
   height: 220px;
   overflow: hidden;
 }
+
+/* new */
+
+.admin-notification {
+  position: fixed;
+  top: 25px;
+  right: 25px;
+  z-index: 99999;
+  min-width: 280px;
+  max-width: 90%;
+  padding: 16px 20px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+  animation: adminNotificationIn 0.25s ease;
+}
+
+.admin-notification.success {
+  background: #16834a;
+}
+
+.admin-notification.error {
+  background: #d93636;
+}
+
+.admin-notification.warning {
+  background: #d88a13;
+}
+
+.admin-notification button {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.admin-confirm-modal {
+  background: white;
+  color: #222;
+  width: 100%;
+  max-width: 420px;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.admin-confirm-modal h2 {
+  margin-top: 0;
+}
+
+.admin-confirm-modal input,
+.admin-confirm-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 7px;
+}
+
+.admin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.admin-modal-actions button {
+  padding: 10px 17px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.admin-delete-confirm {
+  background: #dc3545;
+  color: white;
+}
+
+@keyframes adminNotificationIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-notification {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    min-width: 0;
+  }
+
+  .admin-confirm-modal {
+    padding: 20px;
+  }
+}
