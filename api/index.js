@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -7,13 +6,30 @@ import crypto from "crypto";
 const { Pool } = pg;
 const app = express();
 
+// ================= CORS =================
+
+const allowedOrigins = [
+    "https://tingumingutoys.netlify.app"
+];
+
 app.use(cors({
-    origin: true,
-    credentials: true
+    origin: function (origin, callback) {
+        // Allow requests without an Origin header (e.g. server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("CORS: Origin not allowed"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// ================= DATABASE =================
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -53,6 +69,7 @@ const verifySession = (session) => {
 
     try {
         const [body, signature] = session.split(".");
+
         if (!body || !signature) return false;
 
         const expected = crypto
@@ -65,7 +82,9 @@ const verifySession = (session) => {
         if (
             received.length !== expected.length ||
             !crypto.timingSafeEqual(received, expected)
-        ) return false;
+        ) {
+            return false;
+        }
 
         const data = JSON.parse(
             Buffer.from(body, "base64url").toString("utf8")
@@ -89,9 +108,15 @@ const getCookie = (req, name) => {
         .map(item => item.trim())
         .find(item => item.startsWith(`${name}=`));
 
-    return cookie
-        ? decodeURIComponent(cookie.substring(name.length + 1))
-        : null;
+    if (!cookie) return null;
+
+    try {
+        return decodeURIComponent(
+            cookie.substring(name.length + 1)
+        );
+    } catch {
+        return null;
+    }
 };
 
 const verifyAdmin = (req, res, next) => {
@@ -104,6 +129,14 @@ const verifyAdmin = (req, res, next) => {
     }
 
     next();
+};
+
+// Shared cookie options
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/"
 };
 
 // LOGIN
@@ -132,34 +165,33 @@ router.post("/admin/login", (req, res) => {
     });
 
     res.cookie(COOKIE_NAME, session, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
+        ...cookieOptions,
         maxAge: SESSION_DURATION
     });
 
-    res.json({ message: "Admin login successful" });
+    res.json({
+        message: "Admin login successful"
+    });
 });
 
 // LOGOUT
 router.post("/admin/logout", (req, res) => {
-    res.clearCookie(COOKIE_NAME, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/"
-    });
+    res.clearCookie(COOKIE_NAME, cookieOptions);
 
-    res.json({ message: "Admin logged out" });
+    res.json({
+        message: "Admin logged out"
+    });
 });
 
 // CHECK SESSION
 router.get("/admin/check", verifyAdmin, (req, res) => {
-    res.json({ authenticated: true });
+    res.json({
+        authenticated: true
+    });
 });
 
-// PUBLIC ROUTES
+// ================= PUBLIC ROUTES =================
+
 router.use((req, res, next) => {
     const publicRoutes = [
         ["GET", "/"],
@@ -404,7 +436,9 @@ router.delete("/products/:id", async (req, res) => {
             });
         }
 
-        res.json({ message: "Product deleted successfully" });
+        res.json({
+            message: "Product deleted successfully"
+        });
     } catch (error) {
         errorResponse(res, error, "Product delete failed");
     }
@@ -611,7 +645,7 @@ router.get("/orders", async (req, res) => {
 // UPDATE ORDER STATUS
 router.patch("/orders/:id/status", async (req, res) => {
     const id = getId(req.params.id);
-    const { status } = req.body;
+    const { status } = req.body || {};
 
     const allowedStatuses = [
         "Pending",
@@ -622,11 +656,15 @@ router.patch("/orders/:id/status", async (req, res) => {
     ];
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid order ID" });
+        return res.status(400).json({
+            error: "Invalid order ID"
+        });
     }
 
     if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({ error: "Invalid order status" });
+        return res.status(400).json({
+            error: "Invalid order status"
+        });
     }
 
     try {
@@ -636,7 +674,9 @@ router.patch("/orders/:id/status", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Order not found" });
+            return res.status(404).json({
+                error: "Order not found"
+            });
         }
 
         res.json(result.rows[0]);
@@ -650,7 +690,9 @@ router.delete("/orders/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid order ID" });
+        return res.status(400).json({
+            error: "Invalid order ID"
+        });
     }
 
     try {
@@ -660,10 +702,14 @@ router.delete("/orders/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Order not found" });
+            return res.status(404).json({
+                error: "Order not found"
+            });
         }
 
-        res.json({ message: "Order deleted successfully" });
+        res.json({
+            message: "Order deleted successfully"
+        });
     } catch (error) {
         errorResponse(res, error, "Order delete failed");
     }
@@ -720,7 +766,9 @@ router.patch("/categories/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid category ID" });
+        return res.status(400).json({
+            error: "Invalid category ID"
+        });
     }
 
     const { name, description, image } = req.body || {};
@@ -757,7 +805,9 @@ router.delete("/categories/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid category ID" });
+        return res.status(400).json({
+            error: "Invalid category ID"
+        });
     }
 
     try {
@@ -772,7 +822,9 @@ router.delete("/categories/:id", async (req, res) => {
             });
         }
 
-        res.json({ message: "Category deleted successfully" });
+        res.json({
+            message: "Category deleted successfully"
+        });
     } catch (error) {
         errorResponse(res, error, "Category delete failed");
     }
@@ -859,11 +911,15 @@ router.patch("/reviews/:id/status", async (req, res) => {
     const { status } = req.body || {};
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid review ID" });
+        return res.status(400).json({
+            error: "Invalid review ID"
+        });
     }
 
     if (!["Pending", "Approved", "Rejected"].includes(status)) {
-        return res.status(400).json({ error: "Invalid review status" });
+        return res.status(400).json({
+            error: "Invalid review status"
+        });
     }
 
     try {
@@ -873,7 +929,9 @@ router.patch("/reviews/:id/status", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Review not found" });
+            return res.status(404).json({
+                error: "Review not found"
+            });
         }
 
         res.json(result.rows[0]);
@@ -887,7 +945,9 @@ router.delete("/reviews/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid review ID" });
+        return res.status(400).json({
+            error: "Invalid review ID"
+        });
     }
 
     try {
@@ -897,10 +957,14 @@ router.delete("/reviews/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Review not found" });
+            return res.status(404).json({
+                error: "Review not found"
+            });
         }
 
-        res.json({ message: "Review deleted successfully" });
+        res.json({
+            message: "Review deleted successfully"
+        });
     } catch (error) {
         errorResponse(res, error, "Review delete failed");
     }
@@ -1003,7 +1067,9 @@ router.patch("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid coupon ID" });
+        return res.status(400).json({
+            error: "Invalid coupon ID"
+        });
     }
 
     const {
@@ -1032,7 +1098,9 @@ router.patch("/coupons/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Coupon not found" });
+            return res.status(404).json({
+                error: "Coupon not found"
+            });
         }
 
         res.json(result.rows[0]);
@@ -1046,7 +1114,9 @@ router.delete("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
     if (!id) {
-        return res.status(400).json({ error: "Invalid coupon ID" });
+        return res.status(400).json({
+            error: "Invalid coupon ID"
+        });
     }
 
     try {
@@ -1056,10 +1126,14 @@ router.delete("/coupons/:id", async (req, res) => {
         );
 
         if (!result.rowCount) {
-            return res.status(404).json({ error: "Coupon not found" });
+            return res.status(404).json({
+                error: "Coupon not found"
+            });
         }
 
-        res.json({ message: "Coupon deleted successfully" });
+        res.json({
+            message: "Coupon deleted successfully"
+        });
     } catch (error) {
         errorResponse(res, error, "Coupon delete failed");
     }
@@ -1152,7 +1226,9 @@ router.put("/settings", async (req, res) => {
 
         await client.query("COMMIT");
 
-        res.json({ message: "Settings saved successfully" });
+        res.json({
+            message: "Settings saved successfully"
+        });
     } catch (error) {
         await client.query("ROLLBACK");
         errorResponse(res, error, "Settings save failed");

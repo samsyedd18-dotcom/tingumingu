@@ -22,18 +22,18 @@ function Products() {
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
 
-  // LOAD ACTIVE COUPONS
   useEffect(() => {
     const loadCoupons = async () => {
       try {
-        const response = await fetch("/api/coupons");
+        const response = await fetch(
+          "https://tingumingu-tau.vercel.app/api/coupons"
+        );
 
         if (!response.ok) {
           throw new Error("Coupons could not be loaded");
         }
 
         const data = await response.json();
-
         setCoupons(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Coupon loading error:", error);
@@ -43,12 +43,14 @@ function Products() {
     loadCoupons();
   }, []);
 
-  // FILTER ACTIVE AND VALID COUPONS
   const activeCoupons = coupons.filter((coupon) => {
     if (!coupon.active) return false;
 
     if (coupon.expiry_date) {
-      return new Date(coupon.expiry_date).getTime() > Date.now();
+      const expiry = new Date(coupon.expiry_date);
+      if (!Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()) {
+        return false;
+      }
     }
 
     return true;
@@ -92,10 +94,7 @@ function Products() {
               <div className="product-card" key={product.id}>
                 <Link
                   to={`/product/${product.id}`}
-                  style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
+                  style={{ textDecoration: "none", color: "inherit" }}
                 >
                   <img src={product.image} alt={product.name} />
                   <h3>{product.name}</h3>
@@ -108,30 +107,6 @@ function Products() {
                   {outOfStock ? "Out of Stock" : `Stock: ${stock}`}
                 </p>
 
-                {/* ACTIVE COUPONS */}
-                {activeCoupons.length > 0 && (
-                  <div className="product-coupons">
-                    <p>🎟️ Available Offers</p>
-
-                    {activeCoupons.map((coupon) => (
-                      <div
-                        className="product-coupon"
-                        key={coupon.id}
-                      >
-                        <strong>
-                          {coupon.discount_type === "percentage"
-                            ? `${coupon.discount_value}% OFF`
-                            : `${product.currency || "PKR"} ${coupon.discount_value} OFF`}
-                        </strong>
-
-                        <p>
-                          Code: <strong>{coupon.code}</strong>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 <button
                   onClick={() => addToCart(product)}
                   disabled={outOfStock}
@@ -141,6 +116,29 @@ function Products() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* COUPONS BELOW ALL PRODUCTS */}
+      {activeCoupons.length > 0 && (
+        <div className="product-coupons">
+          <h2>🎟️ Available Offers & Coupons</h2>
+
+          <div className="coupon-grid">
+            {activeCoupons.map((coupon) => (
+              <div className="product-coupon" key={coupon.id}>
+                <h3>
+                  {coupon.discount_type === "percentage"
+                    ? `${coupon.discount_value}% OFF`
+                    : `PKR ${coupon.discount_value} OFF`}
+                </h3>
+
+                <p>Use this code at checkout:</p>
+
+                <strong>{coupon.code}</strong>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

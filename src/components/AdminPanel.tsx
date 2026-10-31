@@ -48,7 +48,7 @@ async function apiRequest(path: string, options: RequestInit = {}) {
 }
 
 function AdminPanel({ activePage }: AdminPanelProps) {
-  const { products } = useProducts();
+  const { products, refreshProducts } = useProducts();
 
   const [orders, setOrders] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -56,7 +56,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
 
-  // NEW ORDER NOTIFICATION
   const knownOrderIds = useRef<Set<string> | null>(null);
   const [newOrderAlert, setNewOrderAlert] = useState<any>(null);
 
@@ -152,7 +151,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       const latestOrders = Array.isArray(data) ? data : [];
 
       if (knownOrderIds.current === null) {
-        // First load: existing orders are not new notifications.
         knownOrderIds.current = new Set(
           latestOrders.map((order: any) => String(order.id))
         );
@@ -177,7 +175,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     }
   };
 
-  // CHECK FOR NEW ORDERS EVERY 30 SECONDS
   useEffect(() => {
     fetchOrders();
 
@@ -319,13 +316,20 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     setLoading(true);
 
     try {
+      showNotification("Uploading product images...");
+
       const uploadedImages = await Promise.all(
         images.map((file) => uploadToCloudinary(file, "image"))
       );
 
-      const videoUrl = video
-        ? await uploadToCloudinary(video, "video")
-        : "";
+      let videoUrl = "";
+
+      if (video) {
+        showNotification("Uploading product video...");
+        videoUrl = await uploadToCloudinary(video, "video");
+      }
+
+      showNotification("Saving product...");
 
       await apiRequest("/products", {
         method: "POST",
@@ -341,6 +345,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           stock: Number(stock),
         }),
       });
+
+      // REFRESH PRODUCT LIST WITHOUT RELOADING PAGE
+      await refreshProducts();
 
       showNotification("Product added successfully!");
 
@@ -364,7 +371,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       if (imageInput) imageInput.value = "";
       if (videoInput) videoInput.value = "";
 
-      window.location.reload();
     } catch (error) {
       showError(error);
     } finally {
@@ -388,9 +394,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         body: JSON.stringify({ stock: quantity }),
       });
 
+      await refreshProducts();
+
       showNotification("Stock updated successfully!");
       setEditingStockId(null);
-      window.location.reload();
     } catch (error) {
       showError(error);
     }
@@ -403,8 +410,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
     try {
       await apiRequest(`/products/${id}`, { method: "DELETE" });
+
+      await refreshProducts();
+
       showNotification("Product deleted successfully!");
-      window.location.reload();
     } catch (error) {
       showError(error);
     }
@@ -794,15 +803,11 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
           <p>{images.length}/3 images selected</p>
 
-          {images.length > 0 && (
-            <div>
-              {images.map((file, index) => (
-                <p key={`${file.name}-${index}`}>
-                  {index + 1}. {file.name}
-                </p>
-              ))}
-            </div>
-          )}
+          {images.map((file, index) => (
+            <p key={`${file.name}-${index}`}>
+              {index + 1}. {file.name}
+            </p>
+          ))}
 
           <label>Product Video (Optional)</label>
 
@@ -842,11 +847,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           ) : (
             products.map((product) => (
               <div key={product.id} className="admin-product">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  width="80"
-                />
+                <img src={product.image} alt={product.name} width="80" />
 
                 <div>
                   <h3>{product.name}</h3>
@@ -874,9 +875,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                         Save Stock
                       </button>
 
-                      <button
-                        onClick={() => setEditingStockId(null)}
-                      >
+                      <button onClick={() => setEditingStockId(null)}>
                         Cancel
                       </button>
                     </>
@@ -1388,7 +1387,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
   return (
     <>
-      {/* NEW ORDER ALERT */}
       {newOrderAlert && (
         <div
           className="new-order-alert"
@@ -1423,7 +1421,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
       {page}
 
-      {/* NOTIFICATION */}
       {notification && (
         <div className={`admin-notification ${notification.type}`}>
           <span>{notification.message}</span>
@@ -1431,7 +1428,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         </div>
       )}
 
-      {/* CONFIRMATION MODAL */}
       {confirmDialog && (
         <div className="admin-modal-overlay">
           <div className="admin-confirm-modal">
@@ -1454,7 +1450,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         </div>
       )}
 
-      {/* EDIT CATEGORY MODAL */}
       {editingCategory && (
         <div className="admin-modal-overlay">
           <div className="admin-confirm-modal">

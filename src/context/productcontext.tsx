@@ -25,6 +25,7 @@ export interface Product {
 
 interface ProductContextType {
   products: Product[];
+  refreshProducts: () => Promise<void>;
   addProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
 }
@@ -42,8 +43,8 @@ export function ProductProvider({
 }) {
   const [products, setProducts] = useState<Product[]>([]);
 
-  // LOAD PRODUCTS
-  const loadProducts = async () => {
+  // LOAD / REFRESH PRODUCTS
+  const refreshProducts = async () => {
     try {
       const response = await fetch(`${API_URL}/products`);
 
@@ -56,11 +57,14 @@ export function ProductProvider({
       setProducts(data);
     } catch (error) {
       console.error("Products load error:", error);
+      throw error;
     }
   };
 
   useEffect(() => {
-    loadProducts();
+    refreshProducts().catch(() => {
+      // Error is already logged inside refreshProducts.
+    });
   }, []);
 
   // ADD PRODUCT
@@ -85,7 +89,7 @@ export function ProductProvider({
       throw new Error(data.error || "Product upload failed");
     }
 
-    setProducts((prev) => [...prev, data]);
+    await refreshProducts();
   };
 
   // DELETE PRODUCT
@@ -110,6 +114,7 @@ export function ProductProvider({
     <ProductContext.Provider
       value={{
         products,
+        refreshProducts,
         addProduct,
         deleteProduct,
       }}
