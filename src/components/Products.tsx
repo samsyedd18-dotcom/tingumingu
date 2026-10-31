@@ -82,12 +82,17 @@ function Products() {
 
   const calculateDiscountedPrice = (
     price: number,
-    coupon: Coupon
+    coupon: {
+      discount_type: string;
+      discount_value: number;
+    }
   ) => {
+    const value = Number(coupon.discount_value);
+
     const discount =
       coupon.discount_type === "percentage"
-        ? (price * coupon.discount_value) / 100
-        : coupon.discount_value;
+        ? (price * Math.min(value, 100)) / 100
+        : Math.min(value, price);
 
     return Math.max(0, price - discount);
   };
@@ -117,11 +122,12 @@ function Products() {
       return;
     }
 
+    const discountValue = Number(coupon.discount_value);
+
     if (
-      !Number.isFinite(Number(coupon.discount_value)) ||
-      Number(coupon.discount_value) <= 0 ||
-      (coupon.discount_type === "percentage" &&
-        Number(coupon.discount_value) > 100)
+      !Number.isFinite(discountValue) ||
+      discountValue <= 0 ||
+      (coupon.discount_type === "percentage" && discountValue > 100)
     ) {
       setCouponMessages((prev) => ({
         ...prev,
@@ -133,7 +139,7 @@ function Products() {
     applyCoupon(productId, {
       code: coupon.code,
       discount_type: coupon.discount_type,
-      discount_value: Number(coupon.discount_value),
+      discount_value: discountValue,
     });
 
     setCouponMessages((prev) => ({
@@ -157,19 +163,17 @@ function Products() {
       ) : (
         <div className="product-grid">
           {filteredProducts.map((product) => {
-            const stock = Number(product.stock ?? 0);
+            // TypeScript fix: stock is optional
+            const stock = Number(
+              (product as typeof product & { stock?: number }).stock ?? 0
+            );
+
             const outOfStock = stock <= 0;
             const originalPrice = Number(product.price);
             const appliedCoupon = appliedCoupons[product.id];
 
             const discountedPrice = appliedCoupon
-              ? Math.max(
-                0,
-                originalPrice -
-                (appliedCoupon.discount_type === "percentage"
-                  ? (originalPrice * appliedCoupon.discount_value) / 100
-                  : appliedCoupon.discount_value)
-              )
+              ? calculateDiscountedPrice(originalPrice, appliedCoupon)
               : originalPrice;
 
             return (
@@ -251,6 +255,7 @@ function Products() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => addToCart(product)}
                   disabled={outOfStock}
                 >
