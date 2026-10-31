@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -10,21 +9,28 @@ const app = express();
 // ================= CORS =================
 
 const allowedOrigins = [
-    "https://tingumingutoys.netlify.app"
+    "https://tingumingu-tau.vercel.app",
+    "https://tingumingutoys.netlify.app",
+    "http://localhost:5173"
 ];
 
-app.use(cors({
+const corsOptions = {
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
 
+        console.error("Blocked CORS Origin:", origin);
         return callback(new Error("CORS: Origin not allowed"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
+
+app.use(cors(corsOptions));
+
+// ================= BODY PARSER =================
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -120,6 +126,7 @@ const getCookie = (req, name) => {
 };
 
 // COOKIE + BEARER TOKEN AUTHENTICATION
+
 const verifyAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization || "";
 
@@ -141,6 +148,7 @@ const verifyAdmin = (req, res, next) => {
 };
 
 // COOKIE OPTIONS
+
 const cookieOptions = {
     httpOnly: true,
     secure: true,
@@ -148,7 +156,8 @@ const cookieOptions = {
     path: "/"
 };
 
-// LOGIN
+// ================= ADMIN LOGIN =================
+
 router.post("/admin/login", (req, res) => {
     const { password } = req.body || {};
 
@@ -184,7 +193,8 @@ router.post("/admin/login", (req, res) => {
     });
 });
 
-// LOGOUT
+// ================= ADMIN LOGOUT =================
+
 router.post("/admin/logout", (req, res) => {
     res.clearCookie(COOKIE_NAME, cookieOptions);
 
@@ -193,7 +203,8 @@ router.post("/admin/logout", (req, res) => {
     });
 });
 
-// CHECK SESSION
+// ================= CHECK ADMIN SESSION =================
+
 router.get("/admin/check", verifyAdmin, (req, res) => {
     res.json({
         authenticated: true
@@ -233,6 +244,7 @@ router.get("/", (req, res) => {
 // ================= PRODUCTS =================
 
 // GET PRODUCTS
+
 router.get("/products", async (req, res) => {
     try {
         const result = await pool.query(
@@ -246,6 +258,7 @@ router.get("/products", async (req, res) => {
 });
 
 // ADD PRODUCT
+
 router.post("/products", async (req, res) => {
     const {
         name,
@@ -326,6 +339,7 @@ router.post("/products", async (req, res) => {
 });
 
 // UPDATE PRODUCT
+
 router.patch("/products/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -425,6 +439,7 @@ router.patch("/products/:id", async (req, res) => {
 });
 
 // DELETE PRODUCT
+
 router.delete("/products/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -457,6 +472,7 @@ router.delete("/products/:id", async (req, res) => {
 // ================= ORDERS =================
 
 // CUSTOMER CHECKOUT
+
 router.post("/orders", async (req, res) => {
     const {
         customer_name,
@@ -640,6 +656,7 @@ router.post("/orders", async (req, res) => {
 });
 
 // GET ORDERS
+
 router.get("/orders", async (req, res) => {
     try {
         const result = await pool.query(
@@ -653,6 +670,7 @@ router.get("/orders", async (req, res) => {
 });
 
 // UPDATE ORDER STATUS
+
 router.patch("/orders/:id/status", async (req, res) => {
     const id = getId(req.params.id);
     const { status } = req.body || {};
@@ -696,6 +714,7 @@ router.patch("/orders/:id/status", async (req, res) => {
 });
 
 // DELETE ORDER
+
 router.delete("/orders/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -727,6 +746,8 @@ router.delete("/orders/:id", async (req, res) => {
 
 // ================= CATEGORIES =================
 
+// GET CATEGORIES
+
 router.get("/categories", async (req, res) => {
     try {
         const result = await pool.query(
@@ -738,6 +759,8 @@ router.get("/categories", async (req, res) => {
         errorResponse(res, error, "Categories fetch failed");
     }
 });
+
+// ADD CATEGORY
 
 router.post("/categories", async (req, res) => {
     const {
@@ -771,6 +794,8 @@ router.post("/categories", async (req, res) => {
         errorResponse(res, error, "Category add failed");
     }
 });
+
+// UPDATE CATEGORY
 
 router.patch("/categories/:id", async (req, res) => {
     const id = getId(req.params.id);
@@ -811,6 +836,8 @@ router.patch("/categories/:id", async (req, res) => {
     }
 });
 
+// DELETE CATEGORY
+
 router.delete("/categories/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -843,6 +870,7 @@ router.delete("/categories/:id", async (req, res) => {
 // ================= REVIEWS =================
 
 // PUBLIC APPROVED REVIEWS
+
 router.get("/reviews", async (req, res) => {
     try {
         const result = await pool.query(
@@ -860,6 +888,7 @@ router.get("/reviews", async (req, res) => {
 });
 
 // CUSTOMER REVIEW
+
 router.post("/reviews", async (req, res) => {
     const {
         product_id,
@@ -900,6 +929,7 @@ router.post("/reviews", async (req, res) => {
 });
 
 // ADMIN REVIEWS
+
 router.get("/admin/reviews", async (req, res) => {
     try {
         const result = await pool.query(
@@ -916,6 +946,7 @@ router.get("/admin/reviews", async (req, res) => {
 });
 
 // REVIEW STATUS
+
 router.patch("/reviews/:id/status", async (req, res) => {
     const id = getId(req.params.id);
     const { status } = req.body || {};
@@ -951,6 +982,7 @@ router.patch("/reviews/:id/status", async (req, res) => {
 });
 
 // DELETE REVIEW
+
 router.delete("/reviews/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -983,6 +1015,7 @@ router.delete("/reviews/:id", async (req, res) => {
 // ================= COUPONS =================
 
 // PUBLIC ACTIVE COUPONS
+
 router.get("/coupons", async (req, res) => {
     try {
         const result = await pool.query(
@@ -996,6 +1029,7 @@ router.get("/coupons", async (req, res) => {
 });
 
 // ADMIN ALL COUPONS
+
 router.get("/admin/coupons", async (req, res) => {
     try {
         const result = await pool.query(
@@ -1009,6 +1043,7 @@ router.get("/admin/coupons", async (req, res) => {
 });
 
 // ADD COUPON
+
 router.post("/coupons", async (req, res) => {
     const {
         code,
@@ -1073,6 +1108,7 @@ router.post("/coupons", async (req, res) => {
 });
 
 // UPDATE COUPON
+
 router.patch("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -1120,6 +1156,7 @@ router.patch("/coupons/:id", async (req, res) => {
 });
 
 // DELETE COUPON
+
 router.delete("/coupons/:id", async (req, res) => {
     const id = getId(req.params.id);
 
@@ -1190,6 +1227,7 @@ router.get("/analytics", async (req, res) => {
 // ================= SETTINGS =================
 
 // PUBLIC SETTINGS
+
 router.get("/settings", async (req, res) => {
     try {
         const result = await pool.query(
@@ -1209,6 +1247,7 @@ router.get("/settings", async (req, res) => {
 });
 
 // SAVE SETTINGS
+
 router.put("/settings", async (req, res) => {
     const entries = Object.entries(req.body || {});
 
