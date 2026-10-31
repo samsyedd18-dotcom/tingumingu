@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useCart } from "../context/cartcontext";
 
@@ -19,9 +18,10 @@ function Checkout() {
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
+  // VERCEL BACKEND API
   const API_URL = import.meta.env.DEV
     ? "http://localhost:5000/api"
-    : "/api";
+    : "https://tingumingu-tau.vercel.app/api";
 
   // LOAD DELIVERY FEE
   useEffect(() => {
@@ -34,7 +34,6 @@ function Checkout() {
         }
 
         const settings = await response.json();
-
         const fee = Number(settings.delivery_fee ?? 0);
 
         setDeliveryFee(
@@ -131,7 +130,7 @@ function Checkout() {
         console.error("Server Response:", errorText);
 
         throw new Error(
-          `Invalid server response. Status: ${response.status}`
+          `Backend JSON response nahi de raha. Status: ${response.status}`
         );
       }
 
@@ -142,8 +141,7 @@ function Checkout() {
       }
 
       alert(
-        `🎉 Order Placed Successfully!\nOrder Total: ${data.total ?? total
-        } ${currency}`
+        `🎉 Order Placed Successfully!\nOrder Total: ${data.total ?? total} ${currency}`
       );
 
       // CLEAR CART AFTER SUCCESSFUL ORDER
@@ -255,9 +253,7 @@ function Checkout() {
           value={payment}
           onChange={(e) => setPayment(e.target.value)}
         >
-          <option value="Cash On Delivery">
-            Cash On Delivery
-          </option>
+          <option value="Cash On Delivery">Cash On Delivery</option>
           <option value="PayPal">PayPal</option>
           <option value="Credit / Debit Card">
             Credit / Debit Card
@@ -273,11 +269,7 @@ function Checkout() {
         ) : (
           cart.map((item) => (
             <div className="checkout-item" key={item.id}>
-              <img
-                src={item.image}
-                alt={item.name}
-                width="70"
-              />
+              <img src={item.image} alt={item.name} width="70" />
 
               <div>
                 <h4>{item.name}</h4>
@@ -290,9 +282,7 @@ function Checkout() {
 
                 <p>
                   Item Total: {currency}{" "}
-                  {(
-                    Number(item.price) * item.quantity
-                  ).toFixed(2)}
+                  {(Number(item.price) * item.quantity).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -307,8 +297,7 @@ function Checkout() {
           </p>
 
           <p>
-            Delivery Fee: {currency}{" "}
-            {deliveryFee.toFixed(2)}
+            Delivery Fee: {currency} {deliveryFee.toFixed(2)}
           </p>
 
           <hr />

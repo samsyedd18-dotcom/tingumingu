@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -14,7 +15,6 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests without an Origin header (e.g. server-to-server)
         if (!origin || allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
@@ -119,8 +119,17 @@ const getCookie = (req, name) => {
     }
 };
 
+// COOKIE + BEARER TOKEN AUTHENTICATION
 const verifyAdmin = (req, res, next) => {
-    const session = getCookie(req, COOKIE_NAME);
+    const authHeader = req.headers.authorization || "";
+
+    const bearerToken = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : null;
+
+    const cookieSession = getCookie(req, COOKIE_NAME);
+
+    const session = bearerToken || cookieSession;
 
     if (!verifySession(session)) {
         return res.status(401).json({
@@ -131,7 +140,7 @@ const verifyAdmin = (req, res, next) => {
     next();
 };
 
-// Shared cookie options
+// COOKIE OPTIONS
 const cookieOptions = {
     httpOnly: true,
     secure: true,
@@ -170,7 +179,8 @@ router.post("/admin/login", (req, res) => {
     });
 
     res.json({
-        message: "Admin login successful"
+        message: "Admin login successful",
+        token: session
     });
 });
 
@@ -1241,5 +1251,7 @@ router.put("/settings", async (req, res) => {
 
 app.use("/api", router);
 app.use("/", router);
+
+// ================= EXPORT =================
 
 export default app;

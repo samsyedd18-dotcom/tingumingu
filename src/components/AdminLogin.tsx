@@ -5,6 +5,8 @@ interface Props {
   setLogged: (value: boolean) => void;
 }
 
+const API = "https://tingumingu-tau.vercel.app/api";
+
 function AdminLogin({ setLogged }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ function AdminLogin({ setLogged }: Props) {
     try {
       setLoading(true);
 
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch(`${API}/admin/login`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -33,17 +35,29 @@ function AdminLogin({ setLogged }: Props) {
         throw new Error(data.error || "Login failed");
       }
 
-      // Verify that the browser received a valid session.
-      const checkResponse = await fetch("/api/admin/check", {
+      // Save admin token
+      if (!data.token) {
+        throw new Error("Login successful, but backend did not return a token.");
+      }
+
+      localStorage.setItem("adminToken", data.token);
+
+      // Verify admin session using Bearer token
+      const checkResponse = await fetch(`${API}/admin/check`, {
         method: "GET",
         credentials: "include",
+        headers: {
+          Authorization: `Bearer ${data.token}`,
+        },
       });
 
       if (!checkResponse.ok) {
+        localStorage.removeItem("adminToken");
         throw new Error("Admin session could not be verified");
       }
 
       alert("Admin Login Successful");
+
       setPassword("");
       setLogged(true);
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useProducts } from "../context/productcontext";
 
@@ -6,8 +5,10 @@ interface AdminPanelProps {
   activePage: string;
 }
 
-const API = "/api";
+// VERCEL BACKEND API
+const API = "https://tingumingu-tau.vercel.app/api";
 
+// API REQUEST FUNCTION
 async function apiRequest(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem("adminToken");
   const headers = new Headers(options.headers);
@@ -27,9 +28,17 @@ async function apiRequest(path: string, options: RequestInit = {}) {
   });
 
   const contentType = response.headers.get("content-type") || "";
-  const data = contentType.includes("application/json")
-    ? await response.json()
-    : null;
+
+  if (!contentType.includes("application/json")) {
+    const responseText = await response.text();
+    console.error("Invalid API response:", responseText);
+
+    throw new Error(
+      `Backend JSON response nahi de raha. HTTP Status: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
 
   if (response.status === 401 || response.status === 403) {
     localStorage.removeItem("adminToken");
@@ -38,10 +47,6 @@ async function apiRequest(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     throw new Error(data?.error || `Request failed (${response.status})`);
-  }
-
-  if (!data) {
-    throw new Error(`Invalid server response (${response.status})`);
   }
 
   return data;
@@ -346,7 +351,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         }),
       });
 
-      // REFRESH PRODUCT LIST WITHOUT RELOADING PAGE
       await refreshProducts();
 
       showNotification("Product added successfully!");
