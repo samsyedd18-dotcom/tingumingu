@@ -47,6 +47,9 @@ const router = express.Router();
 const COOKIE_NAME = "tingu_admin_session";
 const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
+// ADMIN PASSWORD
+const ADMIN_PASSWORD = "tingumingu@01";
+
 const getId = (value) => {
     const id = Number(value);
     return Number.isInteger(id) && id > 0 ? id : null;
@@ -63,7 +66,7 @@ const signSession = (payload) => {
     const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
     const signature = crypto
-        .createHmac("sha256", process.env.ADMIN_PASSWORD)
+        .createHmac("sha256", ADMIN_PASSWORD)
         .update(body)
         .digest("base64url");
 
@@ -71,7 +74,7 @@ const signSession = (payload) => {
 };
 
 const verifySession = (session) => {
-    if (!session || !process.env.ADMIN_PASSWORD) return false;
+    if (!session) return false;
 
     try {
         const [body, signature] = session.split(".");
@@ -79,7 +82,7 @@ const verifySession = (session) => {
         if (!body || !signature) return false;
 
         const expected = crypto
-            .createHmac("sha256", process.env.ADMIN_PASSWORD)
+            .createHmac("sha256", ADMIN_PASSWORD)
             .update(body)
             .digest();
 
@@ -161,16 +164,10 @@ const cookieOptions = {
 router.post("/admin/login", (req, res) => {
     const { password } = req.body || {};
 
-    if (!process.env.ADMIN_PASSWORD) {
-        return res.status(500).json({
-            error: "ADMIN_PASSWORD is not configured"
-        });
-    }
-
     if (
         typeof password !== "string" ||
         !password ||
-        password !== process.env.ADMIN_PASSWORD
+        password !== ADMIN_PASSWORD
     ) {
         return res.status(401).json({
             error: "Wrong password"
