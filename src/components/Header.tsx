@@ -182,30 +182,33 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
           <button
             type="button"
             className="categories-dropdown-btn"
+            aria-expanded={categoriesOpen}
             onClick={() => setCategoriesOpen((prev) => !prev)}
           >
             Categories ▼
           </button>
 
-          {categoriesOpen && (
-            <div className="categories-dropdown-menu">
-              {categories.length > 0 ? (
-                categories.map((category) => (
-                  <Link
-                    key={category.id || category.name}
-                    to={`/category/${encodeURIComponent(category.name)}`}
-                    onClick={() => setCategoriesOpen(false)}
-                  >
-                    {category.name}
-                  </Link>
-                ))
-              ) : (
-                <span className="no-categories">
-                  No categories available
-                </span>
-              )}
-            </div>
-          )}
+          <div
+            className={`categories-dropdown-menu ${categoriesOpen ? "show" : ""
+              }`}
+            onMouseEnter={() => setCategoriesOpen(true)}
+          >
+            {categories.length > 0 ? (
+              categories.map((category) => (
+                <Link
+                  key={category.id || category.name}
+                  to={`/category/${encodeURIComponent(category.name)}`}
+                  onClick={() => setCategoriesOpen(false)}
+                >
+                  {category.name}
+                </Link>
+              ))
+            ) : (
+              <span className="no-categories">
+                No categories available
+              </span>
+            )}
+          </div>
         </div>
 
         <button
