@@ -38,13 +38,19 @@ function Home({ theme, toggleTheme }: ThemeProps) {
         theme={theme}
         toggleTheme={toggleTheme}
       />
+
       <Hero />
       <Categories />
       <Products />
       <Wishlist />
-      <Footer />
+
       <Cart />
-      <CartDrawer open={cartOpen} close={() => setCartOpen(false)} />
+      <Footer />
+
+      <CartDrawer
+        open={cartOpen}
+        close={() => setCartOpen(false)}
+      />
     </div>
   );
 }
@@ -59,10 +65,16 @@ function CategoryPage({ theme, toggleTheme }: ThemeProps) {
         theme={theme}
         toggleTheme={toggleTheme}
       />
+
       <Products />
-      <Footer />
+
       <Cart />
-      <CartDrawer open={cartOpen} close={() => setCartOpen(false)} />
+      <Footer />
+
+      <CartDrawer
+        open={cartOpen}
+        close={() => setCartOpen(false)}
+      />
     </div>
   );
 }
@@ -93,10 +105,12 @@ function App() {
 
       <Routes>
         <Route path="/" element={<Home {...themeProps} />} />
+
         <Route
           path="/category/:category"
           element={<CategoryPage {...themeProps} />}
         />
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/product/:id" element={<ProductDetails />} />

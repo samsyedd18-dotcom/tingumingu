@@ -76,6 +76,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   // PRODUCT STATES
   const [productName, setProductName] = useState("");
   const [price, setPrice] = useState("");
+  const [deliveryCharge, setDeliveryCharge] = useState("0");
   const [category, setCategory] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [video, setVideo] = useState<File | null>(null);
@@ -261,6 +262,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         window.location.replace("/");
       });
   };
+
   // CLOUDINARY UPLOAD
 
   const uploadToCloudinary = async (
@@ -307,6 +309,14 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       return;
     }
 
+    if (
+      !Number.isFinite(Number(deliveryCharge)) ||
+      Number(deliveryCharge) < 0
+    ) {
+      showNotification("Enter valid delivery charges", "warning");
+      return;
+    }
+
     if (!Number.isInteger(Number(stock)) || Number(stock) < 0) {
       showNotification("Enter a valid stock quantity", "warning");
       return;
@@ -342,6 +352,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         body: JSON.stringify({
           name: productName.trim(),
           price: Number(price),
+          delivery_charge: Number(deliveryCharge),
           image: uploadedImages[0],
           images: uploadedImages.slice(1),
           video: videoUrl,
@@ -358,6 +369,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
       setProductName("");
       setPrice("");
+      setDeliveryCharge("0");
       setCategory("");
       setImages([]);
       setVideo(null);
@@ -742,6 +754,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             onChange={(e) => setPrice(e.target.value)}
           />
 
+          <label>Product Delivery Charges</label>
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Delivery Charges"
+            value={deliveryCharge}
+            onChange={(e) => setDeliveryCharge(e.target.value)}
+          />
+
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -859,6 +881,14 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                 <div>
                   <h3>{product.name}</h3>
                   <p>{product.currency || "PKR"} {product.price}</p>
+
+                  <p>
+                    Delivery Charges: {product.currency || "PKR"}{" "}
+                    {Number(
+                      (product as any).delivery_charge ?? 0
+                    ).toLocaleString()}
+                  </p>
+
                   <p>Category: {product.category}</p>
                   <p>
                     Images: {(product.images?.length || 0) + 1}

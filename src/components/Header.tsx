@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 
@@ -10,6 +10,11 @@ import { useWishlist } from "../context/wishlistcontext";
 import { useSearch } from "../context/SearchContext";
 
 import logo from "../assets/tingu-mingu-logo.png";
+
+interface Category {
+  id: string | number;
+  name: string;
+}
 
 interface HeaderProps {
   openCart: () => void;
@@ -24,7 +29,39 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
   const { user, loading } = useAuth();
 
   const navigate = useNavigate();
+
   const [loggingOut, setLoggingOut] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/categories");
+
+        if (!response.ok) {
+          throw new Error("Unable to load categories");
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          setCategories(
+            data.filter(
+              (item: Category) =>
+                item.name &&
+                item.name.trim().toLowerCase() !== "other"
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Header categories error:", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const goWishlist = () => {
     if (window.location.pathname !== "/") {
@@ -136,12 +173,68 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
       <nav className="navbar">
         <Link to="/">Home</Link>
         <Link to="/#products">Shop</Link>
-        <Link to="/category/Men">Men</Link>
-        <Link to="/category/Women">Women</Link>
-        <Link to="/category/Kids">Kids</Link>
-        <Link to="/category/Toys">Toys</Link>
-        <Link to="/#footer">Contact</Link>
+
+        <div
+          className="categories-dropdown"
+          onMouseEnter={() => setCategoriesOpen(true)}
+          onMouseLeave={() => setCategoriesOpen(false)}
+        >
+          <button
+            type="button"
+            className="categories-dropdown-btn"
+            onClick={() => setCategoriesOpen((prev) => !prev)}
+          >
+            Categories ▼
+          </button>
+
+          {categoriesOpen && (
+            <div className="categories-dropdown-menu">
+              {categories.length > 0 ? (
+                categories.map((category) => (
+                  <Link
+                    key={category.id || category.name}
+                    to={`/category/${encodeURIComponent(category.name)}`}
+                    onClick={() => setCategoriesOpen(false)}
+                  >
+                    {category.name}
+                  </Link>
+                ))
+              ) : (
+                <span className="no-categories">
+                  No categories available
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="contact-btn"
+          onClick={() => {
+            setContactOpen((prev) => !prev);
+            setCategoriesOpen(false);
+          }}
+        >
+          Contact
+        </button>
       </nav>
+
+      {contactOpen && (
+        <div className="contact-popup">
+          <button
+            type="button"
+            className="contact-close"
+            onClick={() => setContactOpen(false)}
+            aria-label="Close contact popup"
+          >
+            ×
+          </button>
+
+          <h3>Contact Us</h3>
+          <p>tingumingutoys@gmail.com</p>
+        </div>
+      )}
     </header>
   );
 }
