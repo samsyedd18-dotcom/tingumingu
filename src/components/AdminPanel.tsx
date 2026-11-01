@@ -34,7 +34,7 @@ async function apiRequest(path: string, options: RequestInit = {}) {
     console.error("Invalid API response:", responseText);
 
     throw new Error(
-      `Backend JSON response nahi de raha. HTTP Status: ${response.status}`
+      `ignore this error. HTTP Status: ${response.status}`
     );
   }
 
@@ -76,7 +76,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   // PRODUCT STATES
   const [productName, setProductName] = useState("");
   const [price, setPrice] = useState("");
-  const [deliveryCharge, setDeliveryCharge] = useState("0");
+  const [deliveryCharge, setDeliveryCharge] = useState("");
   const [category, setCategory] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [video, setVideo] = useState<File | null>(null);
@@ -650,7 +650,34 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       showError(error);
     }
   };
+  // CLEAR ALL ORDERS AND REVENUE
 
+  const handleClearRevenue = async () => {
+    const confirmed = await askConfirmation(
+      "WARNING! This will permanently delete ALL orders and revenue records. This action cannot be undone. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await apiRequest("/orders/clear", {
+        method: "DELETE",
+      });
+
+      setOrders([]);
+      setAnalytics(null);
+      setNewOrderAlert(null);
+      knownOrderIds.current = new Set();
+
+      await fetchAnalytics();
+
+      showNotification(
+        "All orders and revenue records cleared successfully!"
+      );
+    } catch (error) {
+      showError(error);
+    }
+  };
   // DASHBOARD
 
   const renderDashboard = () => {
@@ -779,10 +806,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">Select Category</option>
-            <option value="Men">Men</option>
-            <option value="Women">Women</option>
-            <option value="Kids">Kids</option>
-            <option value="Toys">Toys</option>
+
 
             {categories.map((item) => (
               <option key={item.id} value={item.name}>
@@ -1251,12 +1275,29 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   // ANALYTICS
 
   const renderAnalytics = () => (
+
     <section className="admin-panel">
       <div className="admin-content">
         <h2>📊 Store Analytics</h2>
         <button onClick={fetchAnalytics}>🔄 Refresh Analytics</button>
+        <button
+          type="button"
+          onClick={handleClearRevenue}
+          style={{
+            background: "#dc2626",
+            color: "#fff",
+            padding: "12px 20px",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            margin: "15px 0",
+          }}
+        >
+          🗑 Clear All Revenue & Orders
+        </button>
 
         {!analytics ? (
+
           <p>Loading analytics...</p>
         ) : (
           <>

@@ -708,7 +708,21 @@ router.patch("/orders/:id/status", async (req, res) => {
         errorResponse(res, error, "Order status update failed");
     }
 });
+// CLEAR ALL ORDERS AND REVENUE
+router.delete("/orders/clear", async (req, res) => {
+    try {
+        const result = await pool.query(
+            "DELETE FROM orders"
+        );
 
+        res.json({
+            message: "All orders and revenue records cleared",
+            deletedCount: result.rowCount
+        });
+    } catch (error) {
+        errorResponse(res, error, "Failed to clear orders and revenue");
+    }
+});
 // DELETE ORDER
 
 router.delete("/orders/:id", async (req, res) => {
