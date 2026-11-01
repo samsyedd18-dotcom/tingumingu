@@ -19,6 +19,7 @@ import Admin from "./pages/Admin";
 import Checkout from "./pages/Checkout";
 
 import ScrollToTop from "./components/ScrollToTop";
+import { useCart } from "./context/cartcontext";
 
 import "./App.css";
 
@@ -67,29 +68,16 @@ function CategoryPage({ theme, toggleTheme }: ThemeProps) {
 }
 
 function App() {
+  const { toast } = useCart();
+
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const savedTheme = localStorage.getItem("store-theme");
     return savedTheme === "dark" ? "dark" : "light";
   });
 
-  const [notification, setNotification] = useState<string | null>(null);
-
   useEffect(() => {
     localStorage.setItem("store-theme", theme);
   }, [theme]);
-
-  // Replace browser alert() with branded notification
-  useEffect(() => {
-    const originalAlert = window.alert;
-
-    window.alert = (message?: unknown) => {
-      setNotification(String(message ?? ""));
-    };
-
-    return () => {
-      window.alert = originalAlert;
-    };
-  }, []);
 
   const toggleTheme = () => {
     setTheme((current) =>
@@ -105,7 +93,10 @@ function App() {
 
       <Routes>
         <Route path="/" element={<Home {...themeProps} />} />
-        <Route path="/category/:category" element={<CategoryPage {...themeProps} />} />
+        <Route
+          path="/category/:category"
+          element={<CategoryPage {...themeProps} />}
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/product/:id" element={<ProductDetails />} />
@@ -113,21 +104,57 @@ function App() {
         <Route path="/admin" element={<Admin />} />
       </Routes>
 
-      {notification !== null && (
-        <div className="tm-notification-overlay">
-          <div className="tm-notification-box" role="alertdialog" aria-modal="true">
-            <div className="tm-notification-icon">🧸</div>
-            <h2>Tingu Mingu Toys</h2>
-            <p>{notification}</p>
-            <button
-              type="button"
-              onClick={() => setNotification(null)}
-            >
-              Okay
-            </button>
-          </div>
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            zIndex: 100000,
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "16px 20px",
+            maxWidth: "calc(100vw - 40px)",
+            background: "#ffffff",
+            color: "#222222",
+            borderLeft: `5px solid ${toast.type === "success" ? "#16a34a" : "#dc2626"
+              }`,
+            borderRadius: "12px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.18)",
+            fontWeight: 600,
+            animation: "cartToastIn 0.3s ease-out",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "22px",
+              color: toast.type === "success" ? "#16a34a" : "#dc2626",
+            }}
+          >
+            {toast.type === "success" ? "✓" : "!"}
+          </span>
+
+          <span>{toast.message}</span>
         </div>
       )}
+
+      <style>
+        {`
+          @keyframes cartToastIn {
+            from {
+              opacity: 0;
+              transform: translateX(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+        `}
+      </style>
     </>
   );
 }

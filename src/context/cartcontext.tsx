@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 export interface Product {
@@ -20,9 +20,15 @@ export interface AppliedCoupon {
   discount_value: number;
 }
 
+type Toast = {
+  message: string;
+  type: "success" | "error";
+} | null;
+
 type CartContextType = {
   cart: Product[];
   appliedCoupons: Record<number, AppliedCoupon>;
+  toast: Toast;
   addToCart: (product: Omit<Product, "quantity">) => void;
   removeFromCart: (id: number) => void;
   updateQuantity: (id: number, quantity: number) => void;
@@ -37,18 +43,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Product[]>([]);
   const [appliedCoupons, setAppliedCoupons] =
     useState<Record<number, AppliedCoupon>>({});
+  const [toast, setToast] = useState<Toast>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const addToCart = (product: Omit<Product, "quantity">) => {
+    const existing = cart.find((item) => item.id === product.id);
+    const availableStock = Number(product.stock ?? 0);
+
+    if (availableStock <= 0) {
+      setToast({
+        message: "This product is out of stock!",
+        type: "error",
+      });
+      return;
+    }
+
+    if (existing && existing.quantity >= availableStock) {
+      setToast({
+        message: "Available stock limit reached!",
+        type: "error",
+      });
+      return;
+    }
+
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      const availableStock = Number(product.stock ?? 0);
+      const currentItem = prev.find((item) => item.id === product.id);
 
-      if (existing) {
-        if (existing.quantity >= availableStock) {
-          alert("Available stock limit reached!");
-          return prev;
-        }
-
+      if (currentItem) {
         return prev.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -56,12 +86,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      if (availableStock <= 0) {
-        alert("This product is out of stock!");
-        return prev;
-      }
-
       return [...prev, { ...product, quantity: 1 }];
+    });
+
+    setToast({
+      message: `${product.name} added to cart!`,
+      type: "success",
     });
   };
 
@@ -86,7 +116,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (item.id !== id) return item;
 
         if (item.stock !== undefined && quantity > item.stock) {
-          alert("Available stock limit reached!");
+          setToast({
+            message: "Available stock limit reached!",
+            type: "error",
+          });
           return item;
         }
 
@@ -120,6 +153,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         cart,
         appliedCoupons,
+        toast,
         addToCart,
         removeFromCart,
         updateQuantity,

@@ -9,17 +9,31 @@ interface Props {
 
 function CartDrawer({ open, close }: Props) {
   const navigate = useNavigate();
-
   const { cart, updateQuantity, removeFromCart } = useCart();
 
-  const total = cart.reduce((sum, item) => {
-    return sum + Number(item.price) * item.quantity;
-  }, 0);
+  const total = cart.reduce(
+    (sum, item) => sum + Number(item.price) * item.quantity,
+    0
+  );
+
+  const quantityButtonStyle: React.CSSProperties = {
+    width: "36px",
+    height: "36px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    background: "#f3f4f6",
+    color: "#111",
+    fontSize: "22px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
 
   return (
     <div className={open ? "cart-overlay active" : "cart-overlay"}>
       <div className="cart-drawer">
-
         <button className="close-cart" onClick={close}>
           ✕
         </button>
@@ -49,9 +63,21 @@ function CartDrawer({ open, close }: Props) {
                     {lineTotal.toFixed(2)}
                   </p>
 
-                  <div className="cart-quantity-controls">
+                  <div
+                    className="cart-quantity-controls"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      margin: "12px 0",
+                    }}
+                  >
                     <button
                       type="button"
+                      style={{
+                        ...quantityButtonStyle,
+                        opacity: product.quantity <= 1 ? 0.5 : 1,
+                      }}
                       onClick={() =>
                         updateQuantity(product.id, product.quantity - 1)
                       }
@@ -60,10 +86,23 @@ function CartDrawer({ open, close }: Props) {
                       −
                     </button>
 
-                    <span>{product.quantity}</span>
+                    <span
+                      style={{
+                        minWidth: "24px",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                      }}
+                    >
+                      {product.quantity}
+                    </span>
 
                     <button
                       type="button"
+                      style={{
+                        ...quantityButtonStyle,
+                        opacity: product.quantity >= stock ? 0.5 : 1,
+                      }}
                       onClick={() =>
                         updateQuantity(product.id, product.quantity + 1)
                       }
@@ -99,7 +138,6 @@ function CartDrawer({ open, close }: Props) {
             Checkout
           </button>
         </div>
-
       </div>
     </div>
   );
