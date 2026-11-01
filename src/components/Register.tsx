@@ -1,85 +1,170 @@
-import { Link, useParams } from "react-router-dom";
-import { useCart } from "../context/cartcontext";
-import { useProducts } from "../context/productcontext";
-import { useSearch } from "../context/SearchContext";
 
-function Products() {
-  const { addToCart } = useCart();
-  const { products: adminProducts } = useProducts();
-  const { category } = useParams();
-  const { search } = useSearch();
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 
-  const filteredProducts = adminProducts.filter((product) => {
-    const matchesCategory = category
-      ? product.category?.toLowerCase() === category.toLowerCase()
-      : true;
+import { auth } from "../firebase";
 
-    const searchTerm = search.trim().toLowerCase();
+function Register() {
+  const navigate = useNavigate();
 
-    const matchesSearch = searchTerm
-      ? product.name.toLowerCase().includes(searchTerm) ||
-      product.category?.toLowerCase().includes(searchTerm) ||
-      product.description?.toLowerCase().includes(searchTerm)
-      : true;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    return matchesCategory && matchesSearch;
-  });
+  const handleRegister = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+    setError("");
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanName || !cleanEmail || !password || !confirmPassword) {
+      setError("Please fill all fields.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        cleanEmail,
+        password
+      );
+
+      try {
+        await updateProfile(userCredential.user, {
+          displayName: cleanName,
+        });
+      } catch (profileError) {
+        console.error("Profile name update failed:", profileError);
+      }
+
+      navigate("/", { replace: true });
+    } catch (err: any) {
+      switch (err?.code) {
+        case "auth/email-already-in-use":
+          setError("This email is already registered. Please login.");
+          break;
+
+        case "auth/invalid-email":
+          setError("Please enter a valid email address.");
+          break;
+
+        case "auth/weak-password":
+          setError("Please choose a stronger password.");
+          break;
+
+        case "auth/network-request-failed":
+          setError("Network error. Please check your internet.");
+          break;
+
+        case "auth/operation-not-allowed":
+          setError("Email and password registration is disabled in Firebase.");
+          break;
+
+        default:
+          setError("Registration failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <section className="products" id="products">
-      <h2>
-        {search.trim()
-          ? `Search Results for "${search}"`
-          : category
-            ? `${category} Products`
-            : "All Products"}
-      </h2>
+    <section className="login-page">
+      <div className="login-box">
+        <h2>Create Account</h2>
+        <p>Join Tingu Mingu Toys</p>
 
-      {filteredProducts.length === 0 ? (
-        <p>No products found.</p>
-      ) : (
-        <div className="product-grid">
-          {filteredProducts.map((product) => {
-            const stock = Number(product.stock ?? 0);
-            const outOfStock = stock <= 0;
+        <form onSubmit={handleRegister}>
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            required
+          />
 
-            return (
-              <div className="product-card" key={product.id}>
-                <Link
-                  to={`/product/${product.id}`}
-                  style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <img src={product.image} alt={product.name} />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
 
-                  <h3>{product.name}</h3>
+          <input
+            type="password"
+            placeholder="Password (minimum 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={6}
+            required
+          />
 
-                  <h3>
-                    {product.currency || "PKR"} {product.price}
-                  </h3>
-                </Link>
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
 
-                <p>
-                  {outOfStock
-                    ? "Out of Stock"
-                    : `Stock: ${stock}`}
-                </p>
+          {error && (
+            <p
+              role="alert"
+              style={{ color: "#dc2626", fontSize: "14px" }}
+            >
+              {error}
+            </p>
+          )}
 
-                <button
-                  onClick={() => addToCart(product)}
-                  disabled={outOfStock}
-                >
-                  {outOfStock ? "Out of Stock" : "Add To Cart"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+          <button type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Register"}
+          </button>
+        </form>
+
+        <p style={{ marginTop: "20px" }}>
+          Already have an account?
+
+          <Link
+            to="/login"
+            style={{
+              marginLeft: "8px",
+              color: "#0d6efd",
+              fontWeight: "600",
+            }}
+          >
+            Login
+          </Link>
+        </p>
+      </div>
     </section>
   );
 }
 
-export default Products;
+export default Register;

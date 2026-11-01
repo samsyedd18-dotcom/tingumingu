@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 
@@ -20,15 +21,16 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
   const { cart } = useCart();
   const { wishlist } = useWishlist();
   const { search, setSearch } = useSearch();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const navigate = useNavigate();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const goWishlist = () => {
     if (window.location.pathname !== "/") {
       navigate("/");
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         document.getElementById("wishlist")?.scrollIntoView({
           behavior: "smooth",
         });
@@ -41,12 +43,17 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
   };
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+
     try {
+      setLoggingOut(true);
       await signOut(auth);
-      alert("Logged Out Successfully");
-      navigate("/");
-    } catch {
-      alert("Logout Failed");
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      alert("Logout failed. Please try again.");
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -92,24 +99,30 @@ function Header({ openCart, theme, toggleTheme }: HeaderProps) {
             ❤️ {wishlist.length}
           </button>
 
-          {user ? (
+          {loading ? (
+            <span>Loading...</span>
+          ) : user ? (
             <>
               <span className="header-user">
-                👋 {user.email}
+                👋 {user.displayName || user.email}
               </span>
 
-              <button className="login-btn" onClick={handleLogout}>
-                Logout
+              <button
+                className="login-btn"
+                onClick={handleLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? "Logging out..." : "Logout"}
               </button>
             </>
           ) : (
             <>
-              <Link to="/login">
-                <button className="login-btn">Login</button>
+              <Link to="/login" className="login-btn">
+                Login
               </Link>
 
-              <Link to="/register">
-                <button className="login-btn">Register</button>
+              <Link to="/register" className="login-btn">
+                Register
               </Link>
             </>
           )}
