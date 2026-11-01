@@ -247,19 +247,20 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
   // LOGOUT
 
-  const handleLogout = async () => {
-    if (!(await askConfirmation("Are you sure you want to logout?"))) return;
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
 
-    try {
-      await apiRequest("/admin/logout", { method: "POST" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      localStorage.removeItem("adminToken");
-      window.location.reload();
-    }
+    fetch(`${API}/admin/logout`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .catch((error) => {
+        console.error("Logout error:", error);
+      })
+      .finally(() => {
+        window.location.replace("/");
+      });
   };
-
   // CLOUDINARY UPLOAD
 
   const uploadToCloudinary = async (
@@ -653,7 +654,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       <section className="admin-panel">
         <div className="admin-content">
           <h2>👑 Admin Dashboard</h2>
-          <button onClick={handleLogout}>Logout</button>
+          <button type="button" onClick={handleLogout}>
+            Logout
+          </button>
 
           <section className="dashboard-cards">
             <div className="dashboard-card revenue">

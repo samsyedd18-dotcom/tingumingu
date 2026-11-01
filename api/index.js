@@ -1187,23 +1187,61 @@ router.delete("/coupons/:id", async (req, res) => {
 router.get("/analytics", async (req, res) => {
     try {
         const [summary, topProducts, lowStock] = await Promise.all([
+            // TOTAL ORDERS AND REVENUE
             pool.query(`
                 SELECT
                     COUNT(*) AS total_orders,
                     COALESCE(SUM(total), 0) AS total_revenue
                 FROM orders
-                WHERE status <> 'Cancelled'
+                WHERE COALESCE(status, 'Pending') <> 'Cancelled'
             `),
 
+            // TOP SELLING PRODUCTS
+            // Sales are calculated from actual order items.
+            // Cancelled orders are excluded.
             pool.query(`
-                SELECT id, name, price, sales_count, stock
-                FROM products
-                ORDER BY sales_count DESC
+                SELECT
+                    p.id,
+                    p.name,
+                    p.price,
+                    COALESCE(
+                        SUM((item->>'quantity')::integer),
+                        0
+                    )::integer AS sales_count,
+                    p.stock
+                FROM products p
+
+                LEFT JOIN orders o
+                    ON COALESCE(o.status, 'Pending') <> 'Cancelled'
+
+                LEFT JOIN LATERAL jsonb_array_elements(
+                    CASE
+                        WHEN jsonb_typeof(o.items) = 'array'
+                        THEN o.items
+                        ELSE '[]'::jsonb
+                    END
+                ) AS item
+                    ON (item->>'product_id')::integer = p.id
+
+                GROUP BY
+                    p.id,
+                    p.name,
+                    p.price,
+                    p.stock
+
+                ORDER BY
+                    sales_count DESC,
+                    p.id ASC
+
                 LIMIT 10
             `),
 
+            // LOW STOCK PRODUCTS
             pool.query(`
-                SELECT id, name, stock
+                SELECT
+                    id,
+                    name,
+                    stock
                 FROM products
                 WHERE stock <= 5
                 ORDER BY stock ASC
@@ -1215,78 +1253,15 @@ router.get("/analytics", async (req, res) => {
             topProducts: topProducts.rows,
             lowStock: lowStock.rows,
         });
+
     } catch (error) {
         errorResponse(res, error, "Analytics fetch failed");
     }
 });
-
-// ================= SETTINGS =================
-
-// PUBLIC SETTINGS
-
-router.get("/settings", async (req, res) => {
-    try {
-        const result = await pool.query(
-            "SELECT setting_key, setting_value FROM store_settings ORDER BY id"
-        );
-
-        const settings = {};
-
-        result.rows.forEach((row) => {
-            settings[row.setting_key] = row.setting_value;
-        });
-
-        res.json(settings);
-    } catch (error) {
-        errorResponse(res, error, "Settings fetch failed");
-    }
-});
-
-// SAVE SETTINGS
-
-router.put("/settings", async (req, res) => {
-    const entries = Object.entries(req.body || {});
-
-    if (entries.length === 0) {
-        return res.status(400).json({
-            error: "No settings provided"
-        });
-    }
-
-    const client = await pool.connect();
-
-    try {
-        await client.query("BEGIN");
-
-        for (const [key, value] of entries) {
-            await client.query(
-                `INSERT INTO store_settings
-                 (setting_key, setting_value)
-                 VALUES ($1,$2)
-                 ON CONFLICT (setting_key)
-                 DO UPDATE SET setting_value = EXCLUDED.setting_value`,
-                [key, String(value)]
-            );
-        }
-
-        await client.query("COMMIT");
-
-        res.json({
-            message: "Settings saved successfully"
-        });
-    } catch (error) {
-        await client.query("ROLLBACK");
-        errorResponse(res, error, "Settings save failed");
-    } finally {
-        client.release();
-    }
-});
-
-// ================= MOUNT ROUTER =================
+// ================= CONNECT ROUTER =================
 
 app.use("/api", router);
 app.use("/", router);
 
-// ================= EXPORT =================
-
+// Vercel serverless export
 export default app;
