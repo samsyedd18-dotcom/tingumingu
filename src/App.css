@@ -2333,3 +2333,70 @@ footer p {
   color: #dc2626;
   font-size: 13px;
 }
+
+/* new */
+
+.drawer-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 15px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.drawer-item img {
+  width: 85px;
+  height: 85px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.drawer-item-details {
+  flex: 1;
+}
+
+.drawer-item-details h4 {
+  margin: 0 0 8px;
+}
+
+.drawer-item-details p {
+  margin: 5px 0;
+}
+
+.cart-quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.cart-quantity-controls button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.cart-quantity-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cart-quantity-controls span {
+  font-weight: bold;
+}
+
+.remove-cart-item {
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 5px 0;
+}
+
+.drawer-total {
+  padding-top: 15px;
+}
