@@ -1258,6 +1258,51 @@ router.get("/analytics", async (req, res) => {
         errorResponse(res, error, "Analytics fetch failed");
     }
 });
+// ================= STORE SETTINGS =================
+
+// GET SETTINGS
+router.get("/settings", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT setting_key, setting_value
+             FROM store_settings`
+        );
+
+        const settings = {};
+
+        result.rows.forEach((row) => {
+            settings[row.setting_key] = row.setting_value;
+        });
+
+        res.json(settings);
+    } catch (error) {
+        errorResponse(res, error, "Settings fetch failed");
+    }
+});
+
+// SAVE SETTINGS
+router.put("/settings", async (req, res) => {
+    try {
+        const settings = req.body || {};
+
+        for (const [key, value] of Object.entries(settings)) {
+            await pool.query(
+                `INSERT INTO store_settings
+                    (setting_key, setting_value)
+                 VALUES ($1, $2)
+                 ON CONFLICT (setting_key)
+                 DO UPDATE SET setting_value = EXCLUDED.setting_value`,
+                [key, String(value ?? "")]
+            );
+        }
+
+        res.json({
+            message: "Store settings saved successfully"
+        });
+    } catch (error) {
+        errorResponse(res, error, "Settings save failed");
+    }
+});
 // ================= CONNECT ROUTER =================
 
 app.use("/api", router);
