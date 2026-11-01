@@ -53,7 +53,6 @@ function ProductDetails() {
   const handleAddToCart = () => {
     if (outOfStock) return;
 
-    // Add selected quantity to cart.
     for (let i = 0; i < quantity; i++) {
       addToCart(product);
     }
@@ -137,8 +136,8 @@ function ProductDetails() {
               ❌ Out of Stock
             </p>
           ) : (
-            <p style={{ color: "green" }}>
-              ✅ Available Stock: {stock}
+            <p style={{ color: "green", fontWeight: "bold" }}>
+              ✅ In Stock
             </p>
           )}
         </div>

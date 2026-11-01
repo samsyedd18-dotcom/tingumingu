@@ -163,7 +163,6 @@ function Products() {
       ) : (
         <div className="product-grid">
           {filteredProducts.map((product) => {
-            // TypeScript fix: stock is optional
             const stock = Number(
               (product as typeof product & { stock?: number }).stock ?? 0
             );
@@ -202,8 +201,8 @@ function Products() {
                   )}
                 </Link>
 
-                <p>
-                  {outOfStock ? "Out of Stock" : `Stock: ${stock}`}
+                <p className={outOfStock ? "out-of-stock" : "in-stock"}>
+                  {outOfStock ? "Out of Stock" : "In Stock"}
                 </p>
 
                 <div className="product-coupon-input">
