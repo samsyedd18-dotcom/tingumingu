@@ -10,13 +10,22 @@ const app = express();
 // NOTE: Yahan FRONTEND ka URL aana chahiye (backend ka nahi).
 
 const allowedOrigins = [
-    "https://tingumingu-livid.vercel.app/admin",
+    "https://tingumingu-livid.vercel.app",
     "http://localhost:5173"
 ];
 
+// Aapke apne Vercel account ke preview deployment URLs
+// (jaise https://tingumingu-9nnzvymah-samsyedd18-3319.vercel.app)
+const previewOriginPattern =
+    /^https:\/\/tingumingu-[a-z0-9]+-samsyedd18-3319\.vercel\.app$/;
+
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (
+            !origin ||
+            allowedOrigins.includes(origin) ||
+            previewOriginPattern.test(origin)
+        ) {
             return callback(null, true);
         }
 
