@@ -10,7 +10,7 @@ const app = express();
 // NOTE: Yahan FRONTEND ka URL aana chahiye (backend ka nahi).
 
 const allowedOrigins = [
-    "https://tingumingu-livid.vercel.app",
+    "https://tingumingu-livid.vercel.app/admin",
     "http://localhost:5173"
 ];
 
