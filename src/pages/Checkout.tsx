@@ -21,7 +21,7 @@ function Checkout() {
 
   const API_URL = import.meta.env.DEV
     ? "http://localhost:5000/api"
-    : "https://tingumingu-tau.vercel.app/api";
+    : "/api";
 
   useEffect(() => {
     const loadSettings = async () => {

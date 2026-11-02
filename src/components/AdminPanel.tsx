@@ -6,7 +6,7 @@ interface AdminPanelProps {
   activePage: string;
 }
 
-const API = "https://tingumingu-tau.vercel.app/api";
+const API = "/api";
 
 async function apiRequest(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem("adminToken");

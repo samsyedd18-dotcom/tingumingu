@@ -5,7 +5,7 @@ interface Props {
   setLogged: (value: boolean) => void;
 }
 
-const API = "https://tingumingu-tau.vercel.app/api";
+const API = "/api";
 
 function AdminLogin({ setLogged }: Props) {
   const [password, setPassword] = useState("");
