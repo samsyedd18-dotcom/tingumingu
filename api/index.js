@@ -1,4 +1,4 @@
-const crypto = require("node:crypto");
+import crypto from "node:crypto";
 
 const TOKEN_TTL_SECONDS = 12 * 60 * 60;
 
@@ -32,7 +32,7 @@ function verifyToken(token, secret) {
   }
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const path = new URL(req.url || "/", "https://tingumingu-tau.vercel.app").pathname
     .replace(/\\/+$/, "") || "/";
   const method = (req.method || "GET").toUpperCase();
