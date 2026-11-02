@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useProducts } from "../context/productcontext";
 
@@ -5,10 +6,8 @@ interface AdminPanelProps {
   activePage: string;
 }
 
-// VERCEL BACKEND API
 const API = "https://tingumingu-tau.vercel.app/api";
 
-// API REQUEST FUNCTION
 async function apiRequest(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem("adminToken");
   const headers = new Headers(options.headers);
@@ -28,25 +27,36 @@ async function apiRequest(path: string, options: RequestInit = {}) {
   });
 
   const contentType = response.headers.get("content-type") || "";
+  const responseText = await response.text();
 
-  if (!contentType.includes("application/json")) {
-    const responseText = await response.text();
-    console.error("Invalid API response:", responseText);
+  let data: any = null;
 
-    throw new Error(
-      `ignore this error. HTTP Status: ${response.status}`
-    );
+  if (contentType.includes("application/json") && responseText) {
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      throw new Error("Backend returned invalid JSON.");
+    }
   }
-
-  const data = await response.json();
 
   if (response.status === 401 || response.status === 403) {
     localStorage.removeItem("adminToken");
-    throw new Error("Admin session expired. Please login again.");
+    throw new Error(
+      data?.error ||
+      `Admin authentication failed (${response.status}). Please login again.`
+    );
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || `Request failed (${response.status})`);
+    throw new Error(
+      data?.error ||
+      responseText ||
+      `Request failed (${response.status})`
+    );
+  }
+
+  if (!contentType.includes("application/json")) {
+    throw new Error("Backend did not return JSON.");
   }
 
   return data;
@@ -60,6 +70,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
+
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<any>(null);
 
   const knownOrderIds = useRef<Set<string> | null>(null);
   const [newOrderAlert, setNewOrderAlert] = useState<any>(null);
@@ -76,7 +90,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   // PRODUCT STATES
   const [productName, setProductName] = useState("");
   const [price, setPrice] = useState("");
-  const [deliveryCharge, setDeliveryCharge] = useState("");
+  const [deliveryCharge, setDeliveryCharge] = useState("0");
   const [category, setCategory] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [video, setVideo] = useState<File | null>(null);
@@ -93,6 +107,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   const [categoryDescription, setCategoryDescription] = useState("");
   const [categoryImage, setCategoryImage] = useState("");
 
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [editCategoryDescription, setEditCategoryDescription] = useState("");
+
   // COUPON STATES
   const [couponCode, setCouponCode] = useState("");
   const [discountType, setDiscountType] = useState("percentage");
@@ -100,6 +118,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   const [expiryDate, setExpiryDate] = useState("");
   const [usageLimit, setUsageLimit] = useState("");
 
+  // NOTIFICATIONS
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error" | "warning";
@@ -110,20 +129,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     resolve: (value: boolean) => void;
   } | null>(null);
 
-  const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [editCategoryName, setEditCategoryName] = useState("");
-  const [editCategoryDescription, setEditCategoryDescription] = useState("");
-
   const showNotification = (
-    text: string,
+    message: string,
     type: "success" | "error" | "warning" = "success"
   ) => {
-    setNotification({ message: text, type });
+    setNotification({ message, type });
   };
 
-  const askConfirmation = (text: string): Promise<boolean> =>
+  const askConfirmation = (message: string): Promise<boolean> =>
     new Promise((resolve) => {
-      setConfirmDialog({ message: text, resolve });
+      setConfirmDialog({ message, resolve });
     });
 
   const closeConfirmation = (answer: boolean) => {
@@ -144,15 +159,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
     const timer = window.setTimeout(() => {
       setNotification(null);
-    }, 3500);
+    }, 4000);
 
     return () => window.clearTimeout(timer);
   }, [notification]);
 
-  // FETCH DATA
-
+  // FETCH ORDERS
   const fetchOrders = async () => {
     try {
+      setOrdersLoading(true);
+
       const data = await apiRequest("/orders");
       const latestOrders = Array.isArray(data) ? data : [];
 
@@ -178,9 +194,92 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       setOrders(latestOrders);
     } catch (error) {
       showError(error);
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
+  // FETCH CATEGORIES
+  const fetchCategories = async () => {
+    try {
+      const data = await apiRequest("/categories");
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // FETCH REVIEWS
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+
+      const data = await apiRequest("/admin/reviews");
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showError(error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  // FETCH COUPONS
+  const fetchCoupons = async () => {
+    try {
+      const data = await apiRequest("/admin/coupons");
+      setCoupons(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // FETCH ANALYTICS
+  const fetchAnalytics = async () => {
+    try {
+      setAnalytics(await apiRequest("/analytics"));
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // FETCH SETTINGS
+  const fetchSettings = async () => {
+    try {
+      const data = await apiRequest("/settings");
+      setSettings((previous: any) => ({
+        ...previous,
+        ...(data || {}),
+      }));
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // PAGE DATA
+  useEffect(() => {
+    if (
+      ["dashboard", "orders", "customers", "analytics"].includes(activePage)
+    ) {
+      fetchOrders();
+    }
+
+    if (["categories", "products"].includes(activePage)) {
+      fetchCategories();
+    }
+
+    if (activePage === "reviews") fetchReviews();
+    if (activePage === "coupons") fetchCoupons();
+
+    if (activePage === "analytics") {
+      fetchAnalytics();
+    }
+
+    if (activePage === "settings") {
+      fetchSettings();
+    }
+  }, [activePage]);
+
+  // ORDER POLLING
   useEffect(() => {
     fetchOrders();
 
@@ -191,63 +290,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     return () => window.clearInterval(interval);
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      setCategories(await apiRequest("/categories"));
-    } catch (error) {
-      showError(error);
-    }
-  };
-
-  const fetchReviews = async () => {
-    try {
-      setReviews(await apiRequest("/admin/reviews"));
-    } catch (error) {
-      showError(error);
-    }
-  };
-
-  const fetchCoupons = async () => {
-    try {
-      setCoupons(await apiRequest("/admin/coupons"));
-    } catch (error) {
-      showError(error);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      setAnalytics(await apiRequest("/analytics"));
-    } catch (error) {
-      showError(error);
-    }
-  };
-
-  const fetchSettings = async () => {
-    try {
-      const data = await apiRequest("/settings");
-      setSettings((previous: any) => ({ ...previous, ...data }));
-    } catch (error) {
-      showError(error);
-    }
-  };
-
-  useEffect(() => {
-    if (
-      ["dashboard", "orders", "customers", "analytics"].includes(activePage)
-    ) {
-      fetchOrders();
-    }
-
-    if (activePage === "categories") fetchCategories();
-    if (activePage === "reviews") fetchReviews();
-    if (activePage === "coupons") fetchCoupons();
-    if (activePage === "analytics") fetchAnalytics();
-    if (activePage === "settings") fetchSettings();
-  }, [activePage]);
-
   // LOGOUT
-
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
 
@@ -255,16 +298,13 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       method: "POST",
       credentials: "include",
     })
-      .catch((error) => {
-        console.error("Logout error:", error);
-      })
+      .catch((error) => console.error("Logout error:", error))
       .finally(() => {
         window.location.replace("/");
       });
   };
 
   // CLOUDINARY UPLOAD
-
   const uploadToCloudinary = async (
     file: File,
     resourceType: "image" | "video"
@@ -294,9 +334,13 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // ADD PRODUCT
-
   const handleAddProduct = async () => {
-    if (!productName.trim() || !price || !category || images.length === 0) {
+    if (
+      !productName.trim() ||
+      !price ||
+      !category ||
+      images.length === 0
+    ) {
       showNotification(
         "Enter product name, price, category and at least one image",
         "warning"
@@ -318,7 +362,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     }
 
     if (!Number.isInteger(Number(stock)) || Number(stock) < 0) {
-      showNotification("Enter a valid stock quantity", "warning");
+      showNotification("Enter valid stock quantity", "warning");
       return;
     }
 
@@ -365,8 +409,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
       await refreshProducts();
 
-      showNotification("Product added successfully!");
-
       setProductName("");
       setPrice("");
       setDeliveryCharge("0");
@@ -388,6 +430,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       if (imageInput) imageInput.value = "";
       if (videoInput) videoInput.value = "";
 
+      showNotification("Product added successfully!");
     } catch (error) {
       showError(error);
     } finally {
@@ -395,8 +438,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
     }
   };
 
-  // UPDATE PRODUCT STOCK
-
+  // UPDATE STOCK
   const handleUpdateStock = async (id: number) => {
     const quantity = Number(editingStock);
 
@@ -413,23 +455,27 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
       await refreshProducts();
 
-      showNotification("Stock updated successfully!");
       setEditingStockId(null);
+      showNotification("Stock updated successfully!");
     } catch (error) {
       showError(error);
     }
   };
 
   // DELETE PRODUCT
-
   const handleDeleteProduct = async (id: number) => {
-    if (!(await askConfirmation("Are you sure you want to delete this product?"))) return;
+    if (
+      !(await askConfirmation(
+        "Are you sure you want to delete this product?"
+      ))
+    ) return;
 
     try {
-      await apiRequest(`/products/${id}`, { method: "DELETE" });
+      await apiRequest(`/products/${id}`, {
+        method: "DELETE",
+      });
 
       await refreshProducts();
-
       showNotification("Product deleted successfully!");
     } catch (error) {
       showError(error);
@@ -437,7 +483,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // ADD CATEGORY
-
   const handleAddCategory = async () => {
     if (!categoryName.trim()) {
       showNotification("Enter category name", "warning");
@@ -457,15 +502,15 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       setCategoryName("");
       setCategoryDescription("");
       setCategoryImage("");
+
+      await fetchCategories();
       showNotification("Category added successfully!");
-      fetchCategories();
     } catch (error) {
       showError(error);
     }
   };
 
   // EDIT CATEGORY
-
   const handleEditCategory = (item: any) => {
     setEditingCategory(item);
     setEditCategoryName(item.name || "");
@@ -488,7 +533,8 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       });
 
       setEditingCategory(null);
-      fetchCategories();
+      await fetchCategories();
+
       showNotification("Category updated successfully!");
     } catch (error) {
       showError(error);
@@ -496,21 +542,26 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // DELETE CATEGORY
-
   const handleDeleteCategory = async (id: number) => {
-    if (!(await askConfirmation("Are you sure you want to delete this category?"))) return;
+    if (
+      !(await askConfirmation(
+        "Are you sure you want to delete this category?"
+      ))
+    ) return;
 
     try {
-      await apiRequest(`/categories/${id}`, { method: "DELETE" });
-      fetchCategories();
+      await apiRequest(`/categories/${id}`, {
+        method: "DELETE",
+      });
+
+      await fetchCategories();
       showNotification("Category deleted successfully!");
     } catch (error) {
       showError(error);
     }
   };
 
-  // REVIEW STATUS
-
+  // UPDATE REVIEW STATUS
   const handleReviewStatus = async (id: number, status: string) => {
     try {
       await apiRequest(`/reviews/${id}/status`, {
@@ -518,7 +569,15 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         body: JSON.stringify({ status }),
       });
 
-      fetchReviews();
+      await fetchReviews();
+
+      if (selectedReview?.id === id) {
+        setSelectedReview((previous: any) => ({
+          ...previous,
+          status,
+        }));
+      }
+
       showNotification(`Review ${status.toLowerCase()} successfully!`);
     } catch (error) {
       showError(error);
@@ -526,13 +585,26 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // DELETE REVIEW
-
   const handleDeleteReview = async (id: number) => {
-    if (!(await askConfirmation("Are you sure you want to delete this review?"))) return;
+    if (
+      !(await askConfirmation(
+        "Are you sure you want to permanently delete this review?"
+      ))
+    ) return;
 
     try {
-      await apiRequest(`/reviews/${id}`, { method: "DELETE" });
-      fetchReviews();
+      await apiRequest(`/reviews/${id}`, {
+        method: "DELETE",
+      });
+
+      setReviews((previous) =>
+        previous.filter((review) => review.id !== id)
+      );
+
+      if (selectedReview?.id === id) {
+        setSelectedReview(null);
+      }
+
       showNotification("Review deleted successfully!");
     } catch (error) {
       showError(error);
@@ -540,15 +612,29 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // ADD COUPON
-
   const handleAddCoupon = async () => {
     if (!couponCode.trim() || !discountValue) {
       showNotification("Enter coupon code and discount value", "warning");
       return;
     }
 
-    if (!Number.isFinite(Number(discountValue)) || Number(discountValue) <= 0) {
+    const discount = Number(discountValue);
+
+    if (!Number.isFinite(discount) || discount <= 0) {
       showNotification("Enter a valid discount", "warning");
+      return;
+    }
+
+    if (discountType === "percentage" && discount > 100) {
+      showNotification("Percentage cannot exceed 100", "warning");
+      return;
+    }
+
+    if (
+      usageLimit &&
+      (!Number.isInteger(Number(usageLimit)) || Number(usageLimit) <= 0)
+    ) {
+      showNotification("Enter a valid usage limit", "warning");
       return;
     }
 
@@ -558,8 +644,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         body: JSON.stringify({
           code: couponCode.trim().toUpperCase(),
           discount_type: discountType,
-          discount_value: Number(discountValue),
-          expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+          discount_value: discount,
+          expiry_date: expiryDate
+            ? new Date(expiryDate).toISOString()
+            : null,
           usage_limit: usageLimit ? Number(usageLimit) : null,
         }),
       });
@@ -569,7 +657,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       setExpiryDate("");
       setUsageLimit("");
 
-      fetchCoupons();
+      await fetchCoupons();
       showNotification("Coupon created successfully!");
     } catch (error) {
       showError(error);
@@ -577,15 +665,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // TOGGLE COUPON
-
   const handleCouponToggle = async (coupon: any) => {
     try {
       await apiRequest(`/coupons/${coupon.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ active: !coupon.active }),
+        body: JSON.stringify({
+          active: !coupon.active,
+        }),
       });
 
-      fetchCoupons();
+      await fetchCoupons();
       showNotification("Coupon status updated!");
     } catch (error) {
       showError(error);
@@ -593,13 +682,19 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // DELETE COUPON
-
   const handleDeleteCoupon = async (id: number) => {
-    if (!(await askConfirmation("Are you sure you want to delete this coupon?"))) return;
+    if (
+      !(await askConfirmation(
+        "Are you sure you want to delete this coupon?"
+      ))
+    ) return;
 
     try {
-      await apiRequest(`/coupons/${id}`, { method: "DELETE" });
-      fetchCoupons();
+      await apiRequest(`/coupons/${id}`, {
+        method: "DELETE",
+      });
+
+      await fetchCoupons();
       showNotification("Coupon deleted successfully!");
     } catch (error) {
       showError(error);
@@ -607,7 +702,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // SAVE SETTINGS
-
   const handleSaveSettings = async () => {
     try {
       await apiRequest("/settings", {
@@ -622,7 +716,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // UPDATE ORDER STATUS
-
   const handleOrderStatus = async (id: number, status: string) => {
     try {
       await apiRequest(`/orders/${id}/status`, {
@@ -630,7 +723,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         body: JSON.stringify({ status }),
       });
 
-      fetchOrders();
+      await fetchOrders();
       showNotification("Order status updated!");
     } catch (error) {
       showError(error);
@@ -638,20 +731,26 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // DELETE ORDER
-
   const handleDeleteOrder = async (id: number) => {
-    if (!(await askConfirmation("Are you sure you want to delete this order?"))) return;
+    if (
+      !(await askConfirmation(
+        "Are you sure you want to delete this order?"
+      ))
+    ) return;
 
     try {
-      await apiRequest(`/orders/${id}`, { method: "DELETE" });
-      fetchOrders();
+      await apiRequest(`/orders/${id}`, {
+        method: "DELETE",
+      });
+
+      await fetchOrders();
       showNotification("Order deleted successfully!");
     } catch (error) {
       showError(error);
     }
   };
-  // CLEAR ALL ORDERS AND REVENUE
 
+  // CLEAR ALL ORDERS
   const handleClearRevenue = async () => {
     const confirmed = await askConfirmation(
       "WARNING! This will permanently delete ALL orders and revenue records. This action cannot be undone. Continue?"
@@ -678,12 +777,15 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       showError(error);
     }
   };
-  // DASHBOARD
 
+  // DASHBOARD
   const renderDashboard = () => {
     const revenue = orders
       .filter((order) => order.status !== "Cancelled")
-      .reduce((sum, order) => sum + Number(order.total || 0), 0);
+      .reduce(
+        (sum, order) => sum + Number(order.total || 0),
+        0
+      );
 
     const customers = new Set(
       orders.map((order) => order.email).filter(Boolean)
@@ -693,6 +795,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
       <section className="admin-panel">
         <div className="admin-content">
           <h2>👑 Admin Dashboard</h2>
+
           <button type="button" onClick={handleLogout}>
             Logout
           </button>
@@ -738,13 +841,17 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
               <tbody>
                 {orders.length === 0 ? (
-                  <tr><td colSpan={4}>No Orders Found</td></tr>
+                  <tr>
+                    <td colSpan={4}>No Orders Found</td>
+                  </tr>
                 ) : (
                   orders.slice(0, 5).map((order) => (
                     <tr key={order.id}>
                       <td>#{order.id}</td>
                       <td>{order.customer_name}</td>
-                      <td>PKR {order.total}</td>
+                      <td>
+                        {order.currency || "PKR"} {order.total}
+                      </td>
                       <td>{order.status || "Pending"}</td>
                     </tr>
                   ))
@@ -758,7 +865,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // PRODUCTS
-
   const renderProducts = () => (
     <section className="admin-panel">
       <div className="admin-content">
@@ -806,7 +912,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">Select Category</option>
-
 
             {categories.map((item) => (
               <option key={item.id} value={item.name}>
@@ -887,7 +992,11 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
           {video && <p>Selected video: {video.name}</p>}
 
-          <button onClick={handleAddProduct} disabled={loading}>
+          <button
+            type="button"
+            onClick={handleAddProduct}
+            disabled={loading}
+          >
             {loading ? "Uploading..." : "Add Product"}
           </button>
         </div>
@@ -900,11 +1009,17 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           ) : (
             products.map((product) => (
               <div key={product.id} className="admin-product">
-                <img src={product.image} alt={product.name} width="80" />
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  width="80"
+                />
 
                 <div>
                   <h3>{product.name}</h3>
-                  <p>{product.currency || "PKR"} {product.price}</p>
+                  <p>
+                    {product.currency || "PKR"} {product.price}
+                  </p>
 
                   <p>
                     Delivery Charges: {product.currency || "PKR"}{" "}
@@ -927,24 +1042,35 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                         type="number"
                         min="0"
                         value={editingStock}
-                        onChange={(e) => setEditingStock(e.target.value)}
+                        onChange={(e) =>
+                          setEditingStock(e.target.value)
+                        }
                       />
 
                       <button
-                        onClick={() => handleUpdateStock(product.id)}
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStock(product.id)
+                        }
                       >
                         Save Stock
                       </button>
 
-                      <button onClick={() => setEditingStockId(null)}>
+                      <button
+                        type="button"
+                        onClick={() => setEditingStockId(null)}
+                      >
                         Cancel
                       </button>
                     </>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingStockId(product.id);
-                        setEditingStock(String(product.stock ?? 0));
+                        setEditingStock(
+                          String(product.stock ?? 0)
+                        );
                       }}
                     >
                       ✏️ Edit Stock
@@ -952,7 +1078,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                   )}
                 </div>
 
-                <button onClick={() => handleDeleteProduct(product.id)}>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteProduct(product.id)}
+                >
                   🗑 Delete
                 </button>
               </div>
@@ -964,12 +1093,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // ORDERS
-
   const renderOrders = () => (
     <section className="admin-panel">
       <div className="admin-content">
         <h2>🛒 Orders</h2>
-        <button onClick={fetchOrders}>🔄 Refresh Orders</button>
+
+        <button type="button" onClick={fetchOrders}>
+          🔄 Refresh Orders
+        </button>
+
+        {ordersLoading && <p>Loading orders...</p>}
 
         <div className="dashboard-box">
           <table className="orders-table">
@@ -989,7 +1122,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
             <tbody>
               {orders.length === 0 ? (
-                <tr><td colSpan={9}>No Orders Found</td></tr>
+                <tr>
+                  <td colSpan={9}>No Orders Found</td>
+                </tr>
               ) : (
                 orders.map((order) => (
                   <tr key={order.id}>
@@ -999,12 +1134,18 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                     <td>{order.email}</td>
                     <td>{order.address}</td>
                     <td>{order.payment_method}</td>
-                    <td>{order.currency || "PKR"} {order.total}</td>
+                    <td>
+                      {order.currency || "PKR"} {order.total}
+                    </td>
+
                     <td>
                       <select
                         value={order.status || "Pending"}
                         onChange={(e) =>
-                          handleOrderStatus(order.id, e.target.value)
+                          handleOrderStatus(
+                            order.id,
+                            e.target.value
+                          )
                         }
                       >
                         <option>Pending</option>
@@ -1014,8 +1155,14 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                         <option>Cancelled</option>
                       </select>
                     </td>
+
                     <td>
-                      <button onClick={() => handleDeleteOrder(order.id)}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDeleteOrder(order.id)
+                        }
+                      >
                         🗑 Delete
                       </button>
                     </td>
@@ -1030,14 +1177,24 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // CUSTOMERS
-
   const renderCustomers = () => {
-    const customers = orders.reduce((unique: any[], order: any) => {
-      if (!unique.some((customer) => customer.email === order.email)) {
-        unique.push(order);
-      }
-      return unique;
-    }, []);
+    const customers = orders.reduce(
+      (unique: any[], order: any) => {
+        const email = order.email?.toLowerCase();
+
+        if (
+          !unique.some(
+            (customer) =>
+              customer.email?.toLowerCase() === email
+          )
+        ) {
+          unique.push(order);
+        }
+
+        return unique;
+      },
+      []
+    );
 
     return (
       <section className="admin-panel">
@@ -1057,7 +1214,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
               <tbody>
                 {customers.length === 0 ? (
-                  <tr><td colSpan={4}>No Customers Found</td></tr>
+                  <tr>
+                    <td colSpan={4}>No Customers Found</td>
+                  </tr>
                 ) : (
                   customers.map((customer) => (
                     <tr key={customer.id}>
@@ -1077,7 +1236,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   };
 
   // CATEGORIES
-
   const renderCategories = () => (
     <section className="admin-panel">
       <div className="admin-content">
@@ -1089,22 +1247,33 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           <input
             placeholder="Category Name"
             value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
+            onChange={(e) =>
+              setCategoryName(e.target.value)
+            }
           />
 
           <input
             placeholder="Category Description"
             value={categoryDescription}
-            onChange={(e) => setCategoryDescription(e.target.value)}
+            onChange={(e) =>
+              setCategoryDescription(e.target.value)
+            }
           />
 
           <input
             placeholder="Category Image URL (optional)"
             value={categoryImage}
-            onChange={(e) => setCategoryImage(e.target.value)}
+            onChange={(e) =>
+              setCategoryImage(e.target.value)
+            }
           />
 
-          <button onClick={handleAddCategory}>Add Category</button>
+          <button
+            type="button"
+            onClick={handleAddCategory}
+          >
+            Add Category
+          </button>
         </div>
 
         <div className="dashboard-box">
@@ -1116,7 +1285,11 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             categories.map((item) => (
               <div className="admin-product" key={item.id}>
                 {item.image && (
-                  <img src={item.image} alt={item.name} width="70" />
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    width="70"
+                  />
                 )}
 
                 <div>
@@ -1124,11 +1297,19 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                   <p>{item.description}</p>
                 </div>
 
-                <button onClick={() => handleEditCategory(item)}>
+                <button
+                  type="button"
+                  onClick={() => handleEditCategory(item)}
+                >
                   ✏️ Edit
                 </button>
 
-                <button onClick={() => handleDeleteCategory(item.id)}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDeleteCategory(item.id)
+                  }
+                >
                   🗑 Delete
                 </button>
               </div>
@@ -1140,51 +1321,116 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // REVIEWS
-
   const renderReviews = () => (
     <section className="admin-panel">
       <div className="admin-content">
-        <h2>⭐ Customer Reviews</h2>
-        <button onClick={fetchReviews}>🔄 Refresh Reviews</button>
+        <h2>⭐ Customer Reviews ({reviews.length})</h2>
 
-        {reviews.length === 0 ? (
+        <button
+          type="button"
+          onClick={fetchReviews}
+          disabled={reviewsLoading}
+        >
+          {reviewsLoading ? "Loading..." : "🔄 Refresh Reviews"}
+        </button>
+
+        {reviewsLoading ? (
+          <div className="dashboard-box">
+            <p>Loading reviews...</p>
+          </div>
+        ) : reviews.length === 0 ? (
           <div className="dashboard-box">
             <h3>No Reviews Found</h3>
             <p>Customer reviews will appear here when submitted.</p>
           </div>
         ) : (
-          reviews.map((review) => (
-            <div className="dashboard-box" key={review.id}>
-              <h3>{review.customer_name}</h3>
-              <p>Product: {review.product_name || "Product unavailable"}</p>
-              <p>Rating: {"⭐".repeat(Number(review.rating) || 0)}</p>
-              <p>{review.comment}</p>
-              <p>Status: <strong>{review.status}</strong></p>
+          reviews.map((review) => {
+            const rating = Math.max(
+              0,
+              Math.min(5, Number(review.rating) || 0)
+            );
 
-              <button onClick={() => handleReviewStatus(review.id, "Approved")}>
-                ✅ Approve
-              </button>
+            return (
+              <div className="dashboard-box" key={review.id}>
+                <h3>
+                  {review.customer_name || "Anonymous"}
+                </h3>
 
-              <button onClick={() => handleReviewStatus(review.id, "Rejected")}>
-                ❌ Reject
-              </button>
+                <p>
+                  <strong>Product:</strong>{" "}
+                  {review.product_name || "Product unavailable"}
+                </p>
 
-              <button onClick={() => handleReviewStatus(review.id, "Pending")}>
-                ↩ Pending
-              </button>
+                <p>
+                  <strong>Rating:</strong>{" "}
+                  {"⭐".repeat(rating)}
+                  {"☆".repeat(5 - rating)}
+                </p>
 
-              <button onClick={() => handleDeleteReview(review.id)}>
-                🗑 Delete
-              </button>
-            </div>
-          ))
+                <p>
+                  <strong>Status:</strong>{" "}
+                  <span>{review.status || "Pending"}</span>
+                </p>
+
+                <p style={{ overflowWrap: "anywhere" }}>
+                  {review.comment
+                    ? `${review.comment.slice(0, 120)}${review.comment.length > 120 ? "..." : ""
+                    }`
+                    : "No written comment"}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedReview(review)}
+                >
+                  👁 View Details
+                </button>
+
+                <button
+                  type="button"
+                  disabled={review.status === "Approved"}
+                  onClick={() =>
+                    handleReviewStatus(review.id, "Approved")
+                  }
+                >
+                  ✅ Approve
+                </button>
+
+                <button
+                  type="button"
+                  disabled={review.status === "Rejected"}
+                  onClick={() =>
+                    handleReviewStatus(review.id, "Rejected")
+                  }
+                >
+                  ❌ Reject
+                </button>
+
+                <button
+                  type="button"
+                  disabled={review.status === "Pending"}
+                  onClick={() =>
+                    handleReviewStatus(review.id, "Pending")
+                  }
+                >
+                  ↩ Pending
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteReview(review.id)}
+                >
+                  🗑 Delete
+                </button>
+              </div>
+            );
+          })
         )}
       </div>
     </section>
   );
 
   // COUPONS
-
   const renderCoupons = () => (
     <section className="admin-panel">
       <div className="admin-content">
@@ -1196,12 +1442,16 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           <input
             placeholder="Coupon Code (e.g. SAVE10)"
             value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            onChange={(e) =>
+              setCouponCode(e.target.value.toUpperCase())
+            }
           />
 
           <select
             value={discountType}
-            onChange={(e) => setDiscountType(e.target.value)}
+            onChange={(e) =>
+              setDiscountType(e.target.value)
+            }
           >
             <option value="percentage">Percentage (%)</option>
             <option value="fixed">Fixed Amount</option>
@@ -1212,7 +1462,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             min="1"
             placeholder="Discount Value"
             value={discountValue}
-            onChange={(e) => setDiscountValue(e.target.value)}
+            onChange={(e) =>
+              setDiscountValue(e.target.value)
+            }
           />
 
           <label>Expiry Date (optional)</label>
@@ -1220,7 +1472,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           <input
             type="datetime-local"
             value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
+            onChange={(e) =>
+              setExpiryDate(e.target.value)
+            }
           />
 
           <input
@@ -1228,10 +1482,17 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             min="1"
             placeholder="Usage Limit (optional)"
             value={usageLimit}
-            onChange={(e) => setUsageLimit(e.target.value)}
+            onChange={(e) =>
+              setUsageLimit(e.target.value)
+            }
           />
 
-          <button onClick={handleAddCoupon}>Create Coupon</button>
+          <button
+            type="button"
+            onClick={handleAddCoupon}
+          >
+            Create Coupon
+          </button>
         </div>
 
         <div className="dashboard-box">
@@ -1244,24 +1505,41 @@ function AdminPanel({ activePage }: AdminPanelProps) {
               <div className="admin-product" key={coupon.id}>
                 <div>
                   <h3>{coupon.code}</h3>
+
                   <p>
                     Discount: {coupon.discount_value}
-                    {coupon.discount_type === "percentage" ? "%" : " fixed"}
+                    {coupon.discount_type === "percentage"
+                      ? "%"
+                      : " fixed"}
                   </p>
+
                   <p>Used: {coupon.used_count || 0}</p>
-                  <p>Status: {coupon.active ? "Active" : "Inactive"}</p>
+                  <p>
+                    Status: {coupon.active ? "Active" : "Inactive"}
+                  </p>
+
                   <p>
                     Expiry: {coupon.expiry_date
-                      ? new Date(coupon.expiry_date).toLocaleString()
+                      ? new Date(
+                        coupon.expiry_date
+                      ).toLocaleString()
                       : "No expiry"}
                   </p>
                 </div>
 
-                <button onClick={() => handleCouponToggle(coupon)}>
+                <button
+                  type="button"
+                  onClick={() => handleCouponToggle(coupon)}
+                >
                   {coupon.active ? "Deactivate" : "Activate"}
                 </button>
 
-                <button onClick={() => handleDeleteCoupon(coupon.id)}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDeleteCoupon(coupon.id)
+                  }
+                >
                   🗑 Delete
                 </button>
               </div>
@@ -1273,13 +1551,18 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // ANALYTICS
-
   const renderAnalytics = () => (
-
     <section className="admin-panel">
       <div className="admin-content">
         <h2>📊 Store Analytics</h2>
-        <button onClick={fetchAnalytics}>🔄 Refresh Analytics</button>
+
+        <button
+          type="button"
+          onClick={fetchAnalytics}
+        >
+          🔄 Refresh Analytics
+        </button>
+
         <button
           type="button"
           onClick={handleClearRevenue}
@@ -1297,7 +1580,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         </button>
 
         {!analytics ? (
-
           <p>Loading analytics...</p>
         ) : (
           <>
@@ -1313,7 +1595,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
               <div className="dashboard-card orders">
                 <h3>🛒 Total Orders</h3>
-                <h2>{analytics.summary?.total_orders || 0}</h2>
+                <h2>
+                  {analytics.summary?.total_orders || 0}
+                </h2>
               </div>
 
               <div className="dashboard-card products">
@@ -1338,7 +1622,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                 <p>No product sales data available yet.</p>
               ) : (
                 analytics.topProducts.map((item: any) => (
-                  <div key={item.id} className="admin-product">
+                  <div
+                    key={item.id}
+                    className="admin-product"
+                  >
                     <div>
                       <strong>{item.name}</strong>
                       <p>Sales: {item.sales_count}</p>
@@ -1355,7 +1642,10 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                 <p>No low-stock products.</p>
               ) : (
                 analytics.lowStock.map((item: any) => (
-                  <div key={item.id} className="admin-product">
+                  <div
+                    key={item.id}
+                    className="admin-product"
+                  >
                     <strong>{item.name}</strong>
                     <p>Stock remaining: {item.stock}</p>
                   </div>
@@ -1369,7 +1659,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // SETTINGS
-
   const renderSettings = () => (
     <section className="admin-panel">
       <div className="admin-content">
@@ -1379,47 +1668,67 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           <h3>Store Information</h3>
 
           <label>Store Name</label>
+
           <input
             value={settings.store_name || ""}
             onChange={(e) =>
-              setSettings({ ...settings, store_name: e.target.value })
+              setSettings({
+                ...settings,
+                store_name: e.target.value,
+              })
             }
             placeholder="Store Name"
           />
 
           <label>Store Email</label>
+
           <input
             type="email"
             value={settings.store_email || ""}
             onChange={(e) =>
-              setSettings({ ...settings, store_email: e.target.value })
+              setSettings({
+                ...settings,
+                store_email: e.target.value,
+              })
             }
             placeholder="Store Email"
           />
 
           <label>Store Phone</label>
+
           <input
             value={settings.store_phone || ""}
             onChange={(e) =>
-              setSettings({ ...settings, store_phone: e.target.value })
+              setSettings({
+                ...settings,
+                store_phone: e.target.value,
+              })
             }
             placeholder="Store Phone"
           />
 
           <label>Store Address</label>
+
           <textarea
             value={settings.store_address || ""}
             onChange={(e) =>
-              setSettings({ ...settings, store_address: e.target.value })
+              setSettings({
+                ...settings,
+                store_address: e.target.value,
+              })
             }
             placeholder="Store Address"
           />
 
           <label>Default Currency</label>
+
           <select
             value={settings.currency || "PKR"}
             onChange={(e) =>
-              setSettings({ ...settings, currency: e.target.value })
+              setSettings({
+                ...settings,
+                currency: e.target.value,
+              })
             }
           >
             <option value="PKR">PKR</option>
@@ -1429,17 +1738,24 @@ function AdminPanel({ activePage }: AdminPanelProps) {
           </select>
 
           <label>Delivery Fee</label>
+
           <input
             type="number"
             min="0"
             value={settings.delivery_fee ?? "0"}
             onChange={(e) =>
-              setSettings({ ...settings, delivery_fee: e.target.value })
+              setSettings({
+                ...settings,
+                delivery_fee: e.target.value,
+              })
             }
             placeholder="Delivery Fee"
           />
 
-          <button onClick={handleSaveSettings}>
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+          >
             💾 Save Settings
           </button>
         </div>
@@ -1448,7 +1764,6 @@ function AdminPanel({ activePage }: AdminPanelProps) {
   );
 
   // PAGE ROUTING
-
   const page =
     activePage === "dashboard" ? renderDashboard() :
       activePage === "products" ? renderProducts() :
@@ -1459,9 +1774,11 @@ function AdminPanel({ activePage }: AdminPanelProps) {
                 activePage === "coupons" ? renderCoupons() :
                   activePage === "analytics" ? renderAnalytics() :
                     activePage === "settings" ? renderSettings() :
-                      <section className="admin-panel">
-                        <h2>Page not found</h2>
-                      </section>;
+                      (
+                        <section className="admin-panel">
+                          <h2>Page not found</h2>
+                        </section>
+                      );
 
   return (
     <>
@@ -1487,11 +1804,15 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             <p>Order ID: #{newOrderAlert.id}</p>
             <p>Customer: {newOrderAlert.customer_name}</p>
             <p>
-              Total: {newOrderAlert.currency || "PKR"} {newOrderAlert.total}
+              Total: {newOrderAlert.currency || "PKR"}{" "}
+              {newOrderAlert.total}
             </p>
           </div>
 
-          <button onClick={() => setNewOrderAlert(null)}>
+          <button
+            type="button"
+            onClick={() => setNewOrderAlert(null)}
+          >
             Dismiss ✕
           </button>
         </div>
@@ -1499,13 +1820,21 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
       {page}
 
+      {/* NOTIFICATION */}
       {notification && (
         <div className={`admin-notification ${notification.type}`}>
           <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)}>✕</button>
+
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+          >
+            ✕
+          </button>
         </div>
       )}
 
+      {/* CONFIRMATION MODAL */}
       {confirmDialog && (
         <div className="admin-modal-overlay">
           <div className="admin-confirm-modal">
@@ -1513,11 +1842,15 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             <p>{confirmDialog.message}</p>
 
             <div className="admin-modal-actions">
-              <button onClick={() => closeConfirmation(false)}>
+              <button
+                type="button"
+                onClick={() => closeConfirmation(false)}
+              >
                 Cancel
               </button>
 
               <button
+                type="button"
                 className="admin-delete-confirm"
                 onClick={() => closeConfirmation(true)}
               >
@@ -1528,6 +1861,7 @@ function AdminPanel({ activePage }: AdminPanelProps) {
         </div>
       )}
 
+      {/* EDIT CATEGORY MODAL */}
       {editingCategory && (
         <div className="admin-modal-overlay">
           <div className="admin-confirm-modal">
@@ -1535,7 +1869,9 @@ function AdminPanel({ activePage }: AdminPanelProps) {
 
             <input
               value={editCategoryName}
-              onChange={(e) => setEditCategoryName(e.target.value)}
+              onChange={(e) =>
+                setEditCategoryName(e.target.value)
+              }
               placeholder="Category name"
             />
 
@@ -1548,12 +1884,105 @@ function AdminPanel({ activePage }: AdminPanelProps) {
             />
 
             <div className="admin-modal-actions">
-              <button onClick={() => setEditingCategory(null)}>
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+              >
                 Cancel
               </button>
 
-              <button onClick={saveEditedCategory}>
+              <button
+                type="button"
+                onClick={saveEditedCategory}
+              >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVIEW DETAILS MODAL */}
+      {selectedReview && (
+        <div
+          className="admin-modal-overlay"
+          onClick={() => setSelectedReview(null)}
+        >
+          <div
+            className="admin-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="review-details-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="review-details-title">
+              ⭐ Review Details
+            </h2>
+
+            <p>
+              <strong>Review ID:</strong> #{selectedReview.id}
+            </p>
+
+            <p>
+              <strong>Customer:</strong>{" "}
+              {selectedReview.customer_name || "Anonymous"}
+            </p>
+
+            <p>
+              <strong>Product:</strong>{" "}
+              {selectedReview.product_name || "Product unavailable"}
+            </p>
+
+            <p>
+              <strong>Rating:</strong>{" "}
+              {Number(selectedReview.rating) || 0}/5
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              {selectedReview.status || "Pending"}
+            </p>
+
+            <p>
+              <strong>Comment:</strong>
+            </p>
+
+            <p
+              style={{
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {selectedReview.comment || "No written comment"}
+            </p>
+
+            <div className="admin-modal-actions">
+              <button
+                type="button"
+                onClick={() => setSelectedReview(null)}
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleReviewStatus(
+                    selectedReview.id,
+                    "Approved"
+                  )
+                }
+              >
+                ✅ Approve
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleDeleteReview(selectedReview.id)
+                }
+              >
+                🗑 Delete
               </button>
             </div>
           </div>
