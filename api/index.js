@@ -1,15 +1,12 @@
 import crypto from "node:crypto";
-import pg from "pg";
 
-const { Pool } = pg;
 const TOKEN_TTL_SECONDS = 12 * 60 * 60;
 
 let pool;
-function getPool() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is not configured.");
-  }
+async function getPool() {
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured.");
   if (!pool) {
+    const { Pool } = await import("pg");
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
@@ -67,22 +64,16 @@ export default async function handler(req, res) {
   if (path === "/api/admin/login" && method === "POST") {
     const configuredPassword = process.env.ADMIN_PASSWORD;
     const suppliedPassword = req.body && typeof req.body === "object" ? req.body.password : undefined;
-    if (!configuredPassword) {
-      return res.status(500).json({ error: "Admin authentication is not configured on the server." });
-    }
+    if (!configuredPassword) return res.status(500).json({ error: "Admin authentication is not configured on the server." });
     if (typeof suppliedPassword !== "string" || !safeEqual(suppliedPassword, configuredPassword)) {
       return res.status(401).json({ error: "Invalid admin password." });
     }
-    return res.status(200).json({
-      token: createToken(process.env.ADMIN_TOKEN_SECRET || configuredPassword),
-    });
+    return res.status(200).json({ token: createToken(process.env.ADMIN_TOKEN_SECRET || configuredPassword) });
   }
 
   if (path === "/api/admin/check" && method === "GET") {
     const configuredPassword = process.env.ADMIN_PASSWORD;
-    if (!configuredPassword) {
-      return res.status(500).json({ error: "Admin authentication is not configured on the server." });
-    }
+    if (!configuredPassword) return res.status(500).json({ error: "Admin authentication is not configured on the server." });
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     if (!verifyToken(token, process.env.ADMIN_TOKEN_SECRET || configuredPassword)) {
@@ -95,25 +86,20 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: "Logged out." });
   }
 
-  // Public customer review submission; retained alongside admin authentication.
   if (path === "/api/reviews" && method === "POST") {
     const { product_id, customer_name, rating, comment = "" } = req.body || {};
     const id = Number(product_id);
     const stars = Number(rating);
-
     if (!Number.isInteger(id) || id <= 0 || typeof customer_name !== "string" || !customer_name.trim()) {
       return res.status(400).json({ error: "Invalid review details" });
     }
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
       return res.status(400).json({ error: "Rating must be between 1 and 5" });
     }
-
     try {
-      const result = await getPool().query(
-        `INSERT INTO reviews
-          (product_id, customer_name, rating, comment, status)
-         VALUES ($1, $2, $3, $4, 'Pending')
-         RETURNING *`,
+      const result = await (await getPool()).query(
+        `INSERT INTO reviews (product_id, customer_name, rating, comment, status)
+         VALUES ($1, $2, $3, $4, 'Pending') RETURNING *`,
         [id, customer_name.trim(), stars, String(comment).trim()]
       );
       return res.status(201).json(result.rows[0]);
