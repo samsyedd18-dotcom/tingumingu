@@ -135,7 +135,7 @@ function ProductDetails() {
       setReviewComment("");
 
       setReviewMessage(
-        "Thank you! Your review submit ho gaya hai. Admin approval ke baad website par show hoga."
+        "Thank you! Your review have been submitted."
       );
     } catch (error: any) {
       setReviewError(error.message || "Something went wrong.");
