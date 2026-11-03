@@ -11,6 +11,8 @@ const app = express();
 
 const allowedOrigins = [
     "https://tingumingu-livid.vercel.app",
+    "https://tingumingutoys.vercel.app",
+    "https://localhost",
     "http://localhost:5173"
 ];
 

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">tingu mingu</string>
+    <string name="title_activity_main">tingu mingu</string>
+    <string name="package_name">com.tingumingu.toys</string>
+    <string name="custom_url_scheme">com.tingumingu.toys</string>
+</resources>

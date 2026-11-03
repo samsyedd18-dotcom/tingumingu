@@ -245,8 +245,7 @@ function Checkout() {
 
         <select value={payment} onChange={(e) => setPayment(e.target.value)}>
           <option value="Cash On Delivery">Cash On Delivery</option>
-          <option value="PayPal">PayPal</option>
-          <option value="Credit / Debit Card">Credit / Debit Card</option>
+
         </select>
       </div>
 

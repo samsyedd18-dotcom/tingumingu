@@ -34,7 +34,7 @@ const ProductContext = createContext<
   ProductContextType | undefined
 >(undefined);
 
-const API_URL = "/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export function ProductProvider({
   children,
@@ -47,7 +47,7 @@ export function ProductProvider({
   const refreshProducts = async () => {
     try {
       const response = await fetch(`${API_URL}/products`);
-
+      console.log("API URL:", `${API_URL}/products`);
       if (!response.ok) {
         throw new Error("Products fetch failed");
       }
